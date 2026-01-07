@@ -1,6 +1,6 @@
 services:
   wordandwords:
-    image: borborborja/wordandwords:latest
+    image: borborbor/wordandwords:latest
     container_name: wordandwords
     restart: unless-stopped
     ports:
