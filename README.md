@@ -10,7 +10,24 @@ Un juego de palabras multijugador en tiempo real inspirado en Scrabble, construi
 -   **Reglas Flexibles**: Opciones para límite de tiempo, "Modo Estricto" (penalización por palabras inválidas), y más.
 -   **Chat y Emotes**: Comunícate con tus oponentes durante la partida.
 
-## 🛠️ Stack Tecnológico
+## � Capturas de Pantalla
+
+<p align="center">
+  <img src="docs/screenshots/desktop-view.png" alt="Vista de Escritorio" width="45%">
+  <img src="docs/screenshots/mobile-view.png" alt="Vista Móvil" width="45%">
+</p>
+
+## 📱 Diseño Responsivo
+
+Word & Words ha sido diseñado meticulosamente para funcionar en cualquier dispositivo:
+
+-   **Escritorio**: Disfruta de una experiencia amplia con barra lateral, chat visible y tablero de alta resolución.
+-   **Móvil**: La interfaz se adapta automáticamente:
+    -   El tablero maximiza el espacio vertical disponible.
+    -   Los menús y el chat se mueven a paneles accesibles (drawer/modal).
+    -   Controles táctiles optimizados (arrastrar y soltar, tocar para colocar, pellizcar para zoom).
+
+## �🛠️ Stack Tecnológico
 
 ### Cliente (Frontend)
 -   **React** (Vite): Framework principal.
