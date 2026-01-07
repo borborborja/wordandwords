@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
+import { usePWAInstall } from '../hooks/usePWAInstall';
 import { LANGUAGES } from '../i18n';
 import './Settings.css';
 
 export default function Settings({ isOpen, onClose, t, uiLanguage, onUiLanguageChange }) {
+    const { isInstallable, install } = usePWAInstall();
     const [soundEnabled, setSoundEnabled] = useState(() => {
         const saved = localStorage.getItem('soundEnabled');
         return saved !== null ? saved === 'true' : true;
@@ -202,6 +204,37 @@ export default function Settings({ isOpen, onClose, t, uiLanguage, onUiLanguageC
                             🔗 {t('settings.copyLink') || 'Copiar Enlace'}
                         </button>
                     </div>
+
+                    {isInstallable && (
+                        <div className="settings-item">
+                            <div className="settings-item-info">
+                                <span className="settings-item-icon">📲</span>
+                                <div className="settings-item-text">
+                                    <span className="settings-item-label">
+                                        Instalar App
+                                    </span>
+                                    <span className="settings-item-desc">
+                                        Añadir a la pantalla de inicio
+                                    </span>
+                                </div>
+                            </div>
+                            <button
+                                className="settings-btn-primary"
+                                onClick={install}
+                                style={{
+                                    background: 'var(--accent-primary)',
+                                    color: 'white',
+                                    padding: '0.5rem 1rem',
+                                    borderRadius: '8px',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    fontWeight: 'bold'
+                                }}
+                            >
+                                Instalar
+                            </button>
+                        </div>
+                    )}
 
                     {notificationPermission === 'denied' && (
                         <div className="settings-warning">

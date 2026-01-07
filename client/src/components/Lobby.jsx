@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { usePWAInstall } from '../hooks/usePWAInstall';
 import './Lobby.css';
 import { LANGUAGES } from '../i18n';
 
@@ -16,6 +17,7 @@ export default function Lobby({
     initialGameCode,
     gameName = 'WordAndWords'
 }) {
+    const { isInstallable, install } = usePWAInstall();
     const [mode, setMode] = useState(initialGameCode ? 'join' : null); // null, 'create', 'join'
     const [gameLanguage, setGameLanguage] = useState('es');
     const [strictMode, setStrictMode] = useState(false);
@@ -226,10 +228,25 @@ export default function Lobby({
                     </div>
                 )}
 
-                <div className="lobby-footer" style={{ marginTop: '2rem', textAlign: 'center', fontSize: '0.8rem', opacity: 0.6 }}>
-                    <p>
-                        Diccionari català agraït a <a href="https://diccionari.totescrable.cat/" target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'underline' }}>DISC (Totescrabble)</a>
-                    </p>
+                <div className="lobby-footer" style={{ marginTop: '2rem', textAlign: 'center' }}>
+                    {isInstallable && (
+                        <button
+                            className="btn btn-outline btn-sm animate-pulse"
+                            onClick={install}
+                            style={{
+                                padding: '0.5rem 1rem',
+                                borderRadius: '20px',
+                                fontSize: '0.9rem',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                background: 'rgba(255,255,255,0.1)',
+                                border: '1px solid rgba(255,255,255,0.2)'
+                            }}
+                        >
+                            📲 Instalar App
+                        </button>
+                    )}
                 </div>
             </div>
 
