@@ -225,6 +225,12 @@ export default function Lobby({
                         </button>
                     </div>
                 )}
+
+                <div className="lobby-footer" style={{ marginTop: '2rem', textAlign: 'center', fontSize: '0.8rem', opacity: 0.6 }}>
+                    <p>
+                        Diccionari català agraït a <a href="https://diccionari.totescrable.cat/" target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'underline' }}>DISC (Totescrabble)</a>
+                    </p>
+                </div>
             </div>
 
             {/* Decorative elements */}
