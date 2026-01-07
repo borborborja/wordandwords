@@ -40,56 +40,69 @@ Word & Words ha sido diseñado meticulosamente para funcionar en cualquier dispo
 -   **Socket.IO**: Motor de juego en tiempo real.
 -   **Motor de Juego Personalizado**: Lógica de validación de tablero, puntuación y gestión de turnos.
 
-## 📦 Instalación y Despliegue
+## 📦 Quick Start (Docker Hub) - Recomendado
+
+La forma más rápida de jugar es usar la imagen pre-construida de Docker Hub. Solo necesitas Docker instalado.
+
+```bash
+docker run -d -p 8080:80 \
+  -v ./data:/app/data \
+  --name wordandwords \
+  borborbor/wordandwords:latest
+```
+
+O si prefieres usar **Docker Compose** (crea un archivo `docker-compose.yml`):
+
+```yaml
+services:
+  wordandwords:
+    image: borborbor/wordandwords:latest
+    container_name: wordandwords
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    volumes:
+      - ./data:/app/data
+      # Opcional: Persistir diccionarios personalizados
+      - ./dictionaries:/app/server/dictionaries
+```
+
+Luego ejecuta: `docker-compose up -d`
+
+El juego estará disponible en: http://localhost:8080
+
+---
+
+## 🛠️ Desarrollo y Build Manual
 
 ### Requisitos Previos
 -   Node.js v18+
--   Docker (Opcional, para despliegue contenerizado)
+-   Git
 
-### Desarrollo Local (Manual)
+### 1. Clonar y Configurar
+```bash
+git clone https://github.com/borborborja/wordandwords.git
+cd wordandwords
+```
 
-1.  **Clonar el repositorio**:
-    ```bash
-    git clone https://github.com/tu-usuario/wordandwords.git
-    cd wordandwords
-    ```
-
-2.  **Instalar dependencias**:
-    ```bash
-    # Servidor
-    cd server
-    npm install
-    
-    # Cliente
-    cd ../client
-    npm install
-    ```
-
-3.  **Configurar Entorno**:
-    Crea un archivo `.env` en la carpeta `server` (puedes copiar `.env.example`).
-
-4.  **Iniciar en Desarrollo**:
-    Necesitarás dos terminales:
-    ```bash
-    # Terminal 1 (Servidor)
-    cd server
-    npm run dev
-    
-    # Terminal 2 (Cliente)
-    cd client
-    npm run dev
-    ```
-
-### Despliegue con Docker (Recomendado)
-
-El proyecto incluye configuración lista para Docker Compose.
-
+### 2. Ejecutar con Docker (Build Local)
+Si quieres modificar el código y construir tu propia imagen:
 ```bash
 docker-compose up -d --build
 ```
-Esto levantará:
--   Cliente (Nginx) en puerto 80/443
--   Servidor (Node) en puerto 3001
+
+### 3. Ejecutar en Entorno de Desarrollo (Sin Docker)
+```bash
+# Servidor
+cd server
+npm install
+npm run dev
+
+# Cliente (en otra terminal)
+cd ../client
+npm install
+npm run dev
+```
 
 ## 📖 Cómo Jugar
 
