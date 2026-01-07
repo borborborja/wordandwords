@@ -244,3 +244,43 @@
 .admin-link-warning strong {
     color: #ffc107;
 }
+
+/* Mobile Responsiveness */
+@media (max-width: 480px) {
+    .waiting-card {
+        padding: var(--space-md);
+        margin: var(--space-sm);
+        max-width: 100%;
+    }
+
+    .game-code {
+        padding: var(--space-md);
+        gap: var(--space-sm);
+    }
+
+    .code-text {
+        font-size: 1.5rem;
+        letter-spacing: 2px;
+    }
+
+    .share-buttons {
+        flex-direction: column;
+        gap: var(--space-sm);
+    }
+
+    .btn-share {
+        width: 100%;
+        min-width: unset;
+    }
+
+    .players-list {
+        max-height: 40vh;
+        overflow-y: auto;
+    }
+
+    .waiting-room {
+        align-items: flex-start;
+        padding-top: var(--space-xl);
+        min-height: 100dvh;
+    }
+}
