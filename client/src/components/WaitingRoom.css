@@ -7,19 +7,26 @@
 
 .waiting-content {
     display: flex;
-    justify-content: center;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-xl);
+    width: 100%;
+    max-width: 500px;
+    margin: 0 auto;
 }
 
 .waiting-card {
-    padding: var(--space-2xl);
-    max-width: 450px;
+    padding: var(--space-xl);
     width: 100%;
     text-align: center;
+    max-width: none;
+    /* Let the container control width */
 }
 
 .waiting-card h2 {
     margin-bottom: var(--space-xl);
     background: var(--accent-gradient);
+    background-clip: text;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     animation: pulse 2s ease-in-out infinite;
@@ -86,14 +93,22 @@
 
 /* Players list */
 .players-section {
-    margin-bottom: var(--space-xl);
+    width: 100%;
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-lg);
+    padding: var(--space-lg);
+    backdrop-filter: blur(10px);
 }
 
 .players-section h3 {
-    font-size: 1rem;
+    font-size: 1.1rem;
     color: var(--text-secondary);
     margin-bottom: var(--space-md);
     text-align: left;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 
 .players-list {
@@ -101,6 +116,8 @@
     flex-direction: column;
     gap: var(--space-sm);
 }
+
+
 
 .player-item {
     display: flex;
@@ -159,9 +176,11 @@
 }
 
 .waiting-message {
+    text-align: center;
     color: var(--text-secondary);
-    font-size: 0.875rem;
-    padding: var(--space-md);
+    font-size: 0.9rem;
+    margin-bottom: var(--space-sm);
+    font-style: italic;
 }
 
 /* Share Buttons */

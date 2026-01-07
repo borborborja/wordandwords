@@ -304,6 +304,26 @@
     .float-tile {
         display: none;
     }
+
+    .lobby-content {
+        padding: var(--space-lg) var(--space-md);
+        justify-content: flex-start;
+        /* Allow scroll if needed, but try to fit */
+    }
+
+    .lobby-hero {
+        margin-top: var(--space-2xl);
+        /* Clearance for header */
+        margin-bottom: var(--space-lg);
+    }
+
+    .lobby-title {
+        margin-bottom: var(--space-xs);
+    }
+
+    .lobby-actions {
+        gap: var(--space-md);
+    }
 }
 
 /* Game Options Grid */

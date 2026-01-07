@@ -33,6 +33,13 @@
     box-shadow: 0 0 10px rgba(46, 204, 113, 0.5);
 }
 
+.connection-status.connected {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.5s ease 2s;
+    /* Wait 2s, then fade out */
+}
+
 .connection-status.disconnected .status-dot {
     background: #e74c3c;
     animation: blink 1s ease-in-out infinite;
