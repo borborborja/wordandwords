@@ -29,3 +29,6 @@ docker-data/
 data/
 dictionaries/
 server/data/
+
+# Future Project Proposals
+AGENTS_PROPOSAL.md
