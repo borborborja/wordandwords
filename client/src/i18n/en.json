@@ -1,0 +1,89 @@
+{
+    "lobby": {
+        "title": "WordAndWords",
+        "subtitle": "Multiplayer Word Game",
+        "createGame": "Create Game",
+        "joinGame": "Join Game",
+        "enterName": "Your name",
+        "enterCode": "Game code",
+        "selectLanguage": "Select language",
+        "waiting": "Waiting for players...",
+        "players": "Players",
+        "start": "Start Game",
+        "copied": "Copied!",
+        "shareCode": "Share this code with friends",
+        "minPlayers": "Need at least 2 players to start",
+        "strictMode": "Strict Mode",
+        "strictModeDesc": "Lose turn if word is invalid",
+        "enableChat": "Enable Chat",
+        "enableHistory": "Enable History",
+        "timeLimit": "Time Limit",
+        "timeInfinite": "Infinite"
+    },
+    "game": {
+        "yourTurn": "Your turn",
+        "waitingTurn": "Turn: {{name}}",
+        "score": "Score",
+        "tilesLeft": "Tiles left",
+        "play": "Play",
+        "pass": "Pass",
+        "exchange": "Exchange",
+        "shuffle": "Shuffle",
+        "submit": "Submit Word",
+        "cancel": "Cancel",
+        "invalidWord": "Invalid word",
+        "points": "points",
+        "bingo": "BINGO! +50 bonus",
+        "gameOver": "Game Over",
+        "winner": "Winner",
+        "playAgain": "Play Again",
+        "leave": "Leave Game",
+        "zoomIn": "Zoom In",
+        "zoomOut": "Zoom Out"
+    },
+    "board": {
+        "TW": "TW",
+        "DW": "DW",
+        "TL": "TL",
+        "DL": "DL",
+        "center": "★"
+    },
+    "settings": {
+        "title": "Game Settings",
+        "sound": "Sound Effects",
+        "soundDesc": "Toggle game sounds",
+        "notifications": "Turn Notifications",
+        "notificationsDesc": "Get notified when it's your turn",
+        "notificationsDenied": "⚠️ Notifications are blocked in your browser. Enable them in site settings to get alerts.",
+        "language": "Language",
+        "languageDesc": "Change interface language"
+    },
+    "sidebar": {
+        "chat": "Chat",
+        "history": "History"
+    },
+    "chat": {
+        "title": "GAME CHAT",
+        "showHistory": "Show History",
+        "empty": "Start the conversation!",
+        "placeholder": "Type a message..."
+    },
+    "history": {
+        "empty": "No history yet",
+        "passed": "Passed turn",
+        "exchanged": "Exchanged {{count}} tiles",
+        "penalty": "Invalid word! Lost turn."
+    },
+    "languages": {
+        "ca": "Català",
+        "en": "English",
+        "es": "Español"
+    },
+    "errors": {
+        "connection": "Connection error",
+        "gameNotFound": "Game not found",
+        "gameFull": "Game is full",
+        "invalidMove": "Invalid move",
+        "notYourTurn": "It's not your turn"
+    }
+}

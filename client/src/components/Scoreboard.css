@@ -1,0 +1,154 @@
+.scoreboard {
+    padding: var(--space-lg);
+    min-width: 200px;
+}
+
+.scoreboard-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: var(--space-md);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.scoreboard-players {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+}
+
+.scoreboard-player {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-sm) var(--space-md);
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: var(--radius-sm);
+    transition: all 0.2s ease;
+}
+
+.scoreboard-player.active {
+    background: rgba(102, 126, 234, 0.2);
+    border-left: 3px solid var(--accent-primary);
+}
+
+.scoreboard-player.is-me {
+    background: rgba(102, 126, 234, 0.1);
+}
+
+.player-info {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+}
+
+.player-indicator {
+    width: 16px;
+    display: flex;
+    justify-content: center;
+}
+
+.turn-indicator {
+    color: var(--accent-primary);
+    font-size: 0.7rem;
+    animation: pulse 1s ease-in-out infinite;
+}
+
+.player-name {
+    font-weight: 500;
+}
+
+.you-badge {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-left: var(--space-xs);
+}
+
+.offline-badge {
+    font-size: 0.65rem;
+    color: #e74c3c;
+    background: rgba(231, 76, 60, 0.2);
+    padding: 2px 6px;
+    border-radius: 4px;
+    margin-left: var(--space-xs);
+}
+
+.player-score {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--accent-primary);
+}
+
+.scoreboard-info {
+    margin-top: var(--space-lg);
+    padding-top: var(--space-md);
+    border-top: 1px solid var(--glass-border);
+}
+
+.info-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.info-label {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+.info-value {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+@media (max-width: 768px) {
+    .scoreboard {
+        padding: var(--space-sm);
+        display: flex;
+        align-items: center;
+        gap: var(--space-md);
+        min-width: auto;
+        overflow-x: auto;
+        white-space: nowrap;
+    }
+
+    .scoreboard-title {
+        display: none;
+    }
+
+    .scoreboard-info {
+        display: none;
+    }
+
+    .scoreboard-players {
+        flex-direction: row;
+        gap: var(--space-xs);
+    }
+
+    .scoreboard-player {
+        padding: 4px 8px;
+        min-width: 100px;
+    }
+
+    .player-info {
+        gap: 4px;
+    }
+
+    .player-name {
+        font-size: 0.8rem;
+    }
+
+    .player-score {
+        font-size: 1rem;
+        margin-left: var(--space-xs);
+    }
+
+    .you-badge {
+        display: none;
+    }
+
+    .turn-indicator {
+        font-size: 0.6rem;
+    }
+}

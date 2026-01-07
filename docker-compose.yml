@@ -1,0 +1,21 @@
+services:
+  wordandwords:
+    build: .
+    container_name: wordandwords
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    volumes:
+      # Persist SQLite database
+      - ./data:/app/data
+    environment:
+      - NODE_ENV=production
+      - DATA_DIR=/app/data
+      # Admin password - CHANGE THIS IN PRODUCTION!
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin123}
+    healthcheck:
+      test: [ "CMD", "wget", "-q", "--spider", "http://localhost:80" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s

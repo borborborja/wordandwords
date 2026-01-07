@@ -1,0 +1,148 @@
+.tile {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(145deg, #f5e6d3 0%, #e8d4bc 100%);
+    border: 2px solid #c9a66b;
+    border-radius: 6px;
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.15s ease;
+    box-shadow:
+        0 3px 6px rgba(0, 0, 0, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.5),
+        inset 0 -1px 0 rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+}
+
+.tile::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, transparent 40%, rgba(255, 255, 255, 0.2) 50%, transparent 60%);
+    pointer-events: none;
+}
+
+.tile-shine {
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 50%;
+    height: 100%;
+    background: linear-gradient(90deg,
+            transparent,
+            rgba(255, 255, 255, 0.3),
+            transparent);
+    transition: left 0.5s ease;
+    pointer-events: none;
+}
+
+.tile:hover .tile-shine {
+    left: 150%;
+}
+
+.tile-small {
+    width: 28px;
+    height: 28px;
+    font-size: 14px;
+    border-radius: 4px;
+}
+
+.tile-medium {
+    width: 44px;
+    height: 44px;
+    font-size: 22px;
+}
+
+.tile-large {
+    width: 56px;
+    height: 56px;
+    font-size: 28px;
+}
+
+.tile-letter {
+    font-family: 'Outfit', sans-serif;
+    font-weight: 700;
+    color: #2d1810;
+    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.5);
+    z-index: 1;
+}
+
+.tile-value {
+    position: absolute;
+    bottom: 2px;
+    right: 3px;
+    font-size: 0.45em;
+    font-weight: 600;
+    color: #5c4033;
+    z-index: 1;
+}
+
+.tile-small .tile-value {
+    font-size: 8px;
+    bottom: 1px;
+    right: 2px;
+}
+
+.tile:hover {
+    transform: translateY(-2px) scale(1.05);
+    box-shadow:
+        0 6px 12px rgba(0, 0, 0, 0.25),
+        inset 0 1px 0 rgba(255, 255, 255, 0.5),
+        inset 0 -1px 0 rgba(0, 0, 0, 0.1);
+}
+
+.tile:active {
+    transform: translateY(0) scale(0.98);
+}
+
+.tile-dragging {
+    opacity: 0.5;
+    transform: scale(1.1);
+}
+
+.tile-selected {
+    outline: 3px solid #667eea;
+    outline-offset: 2px;
+    box-shadow:
+        0 0 20px rgba(102, 126, 234, 0.4),
+        0 3px 6px rgba(0, 0, 0, 0.2);
+}
+
+.tile-placed {
+    animation: tilePlaced 0.3s ease forwards;
+}
+
+@keyframes tilePlaced {
+    0% {
+        transform: scale(0.8);
+        opacity: 0;
+    }
+
+    50% {
+        transform: scale(1.1);
+    }
+
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+/* Mobile: smaller tiles */
+@media (max-width: 500px) {
+    .tile-large {
+        width: 40px;
+        height: 40px;
+        font-size: 20px;
+    }
+}
+
+@media (max-width: 380px) {
+    .tile-large {
+        width: 36px;
+        height: 36px;
+        font-size: 18px;
+    }
+}

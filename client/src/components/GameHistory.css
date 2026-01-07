@@ -1,0 +1,74 @@
+.game-history {
+    flex: 1;
+    overflow-y: auto;
+    padding: var(--space-md);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
+    min-height: 0;
+    /* Important for flex shrink */
+}
+
+.history-item {
+    padding: var(--space-xs);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.history-item:last-child {
+    border-bottom: none;
+}
+
+.history-header {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    margin-bottom: 2px;
+}
+
+.history-player {
+    font-weight: 600;
+}
+
+.history-content {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+}
+
+.history-icon {
+    font-size: 1.2rem;
+}
+
+.history-details {
+    flex: 1;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.history-words {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.history-score {
+    background: rgba(46, 204, 113, 0.2);
+    color: #2ecc71;
+    padding: 2px 6px;
+    border-radius: 10px;
+    font-size: 0.8rem;
+    font-weight: 700;
+}
+
+.history-penalty {
+    color: #e74c3c;
+    font-size: 0.9rem;
+}
+
+.history-empty {
+    text-align: center;
+    color: var(--text-secondary);
+    margin-top: var(--space-xl);
+    font-style: italic;
+}

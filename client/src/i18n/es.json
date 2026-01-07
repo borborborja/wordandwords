@@ -1,0 +1,89 @@
+{
+    "lobby": {
+        "title": "WordAndWords",
+        "subtitle": "Juego de Palabras Multijugador",
+        "createGame": "Crear Partida",
+        "joinGame": "Unirse",
+        "enterName": "Tu nombre",
+        "enterCode": "Código de partida",
+        "selectLanguage": "Selecciona idioma",
+        "waiting": "Esperando jugadores...",
+        "players": "Jugadores",
+        "start": "Empezar",
+        "copied": "¡Copiado!",
+        "shareCode": "Comparte este código con tus amigos",
+        "minPlayers": "Se necesitan al menos 2 jugadores para empezar",
+        "strictMode": "Modo Estricto",
+        "strictModeDesc": "Pierdes turno si la palabra no existe",
+        "enableChat": "Activar Chat",
+        "enableHistory": "Activar Historial",
+        "timeLimit": "Límite de tiempo",
+        "timeInfinite": "Infinito"
+    },
+    "game": {
+        "yourTurn": "Tu turno",
+        "waitingTurn": "Turno: {{name}}",
+        "score": "Puntuación",
+        "tilesLeft": "Fichas restantes",
+        "play": "Jugar",
+        "pass": "Pasar",
+        "exchange": "Cambiar",
+        "shuffle": "Mezclar",
+        "submit": "Enviar Palabra",
+        "cancel": "Cancelar",
+        "invalidWord": "Palabra inválida",
+        "points": "puntos",
+        "bingo": "¡BINGO! +50 extra",
+        "gameOver": "Partida Terminada",
+        "winner": "Ganador",
+        "playAgain": "Volver a Jugar",
+        "leave": "Salir",
+        "zoomIn": "Acercar",
+        "zoomOut": "Alejar"
+    },
+    "board": {
+        "TW": "TP",
+        "DW": "DP",
+        "TL": "TL",
+        "DL": "DL",
+        "center": "★"
+    },
+    "settings": {
+        "title": "Ajustes del Juego",
+        "sound": "Efectos de Sonido",
+        "soundDesc": "Activa o desactiva los sonidos",
+        "notifications": "Notificaciones de Turno",
+        "notificationsDesc": "Recibe un aviso cuando te toque",
+        "notificationsDenied": "⚠️ Las notificaciones están bloqueadas en tu navegador. Actívalas en la configuración del sitio para recibir avisos.",
+        "language": "Idioma",
+        "languageDesc": "Cambiar idioma de la interfaz"
+    },
+    "sidebar": {
+        "chat": "Chat",
+        "history": "Historial"
+    },
+    "chat": {
+        "title": "CHAT DEL JUEGO",
+        "showHistory": "Mostrar Historial",
+        "empty": "¡Empieza la conversación!",
+        "placeholder": "Escribe un mensaje..."
+    },
+    "history": {
+        "empty": "No hay historial aún",
+        "passed": "Pasó el turno",
+        "exchanged": "Cambió {{count}} fichas",
+        "penalty": "¡Palabra inválida! Perdió turno."
+    },
+    "languages": {
+        "ca": "Català",
+        "en": "English",
+        "es": "Español"
+    },
+    "errors": {
+        "connection": "Error de conexión",
+        "gameNotFound": "Partida no encontrada",
+        "gameFull": "La partida está llena",
+        "invalidMove": "Movimiento inválido",
+        "notYourTurn": "No es tu turno"
+    }
+}

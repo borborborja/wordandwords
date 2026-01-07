@@ -1,0 +1,96 @@
+.tile-rack-container {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    width: 100%;
+    justify-content: center;
+}
+
+.tile-rack {
+    padding: var(--space-sm) var(--space-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.tile-rack-tiles {
+    display: flex;
+    gap: 4px;
+}
+
+.tile-rack-slot {
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.tile-rack-slot-empty {
+    background: rgba(255, 255, 255, 0.03);
+    border: 2px dashed rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+}
+
+.shuffle-btn {
+    padding: var(--space-sm);
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 1.25rem;
+    flex-shrink: 0;
+}
+
+.shuffle-btn:hover {
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.shuffle-btn:active {
+    transform: rotate(180deg);
+}
+
+/* Mobile: smaller tiles to fit screen */
+@media (max-width: 500px) {
+    .tile-rack-container {
+        gap: 4px;
+    }
+
+    .tile-rack {
+        padding: var(--space-xs) var(--space-sm);
+    }
+
+    .tile-rack-tiles {
+        gap: 2px;
+    }
+
+    .tile-rack-slot {
+        width: 40px;
+        height: 40px;
+    }
+
+    .shuffle-btn {
+        width: 36px;
+        height: 36px;
+        font-size: 1rem;
+    }
+}
+
+/* Very small screens */
+@media (max-width: 380px) {
+    .tile-rack-slot {
+        width: 36px;
+        height: 36px;
+    }
+
+    .shuffle-btn {
+        width: 32px;
+        height: 32px;
+    }
+}

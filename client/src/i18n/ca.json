@@ -1,0 +1,89 @@
+{
+    "lobby": {
+        "title": "WordAndWords",
+        "subtitle": "Joc de Paraules Multijugador",
+        "createGame": "Crear Partida",
+        "joinGame": "Unir-se",
+        "enterName": "El teu nom",
+        "enterCode": "Codi de partida",
+        "selectLanguage": "Selecciona l'idioma",
+        "waiting": "Esperant jugadors...",
+        "players": "Jugadors",
+        "start": "Començar",
+        "copied": "Copiat!",
+        "shareCode": "Comparteix aquest codi amb els amics",
+        "minPlayers": "Calen almenys 2 jugadors per començar",
+        "strictMode": "Mode Estricte",
+        "strictModeDesc": "Perds torn si la paraula no existeix",
+        "enableChat": "Activar Xat",
+        "enableHistory": "Activar Historial",
+        "timeLimit": "Límit de temps",
+        "timeInfinite": "Infinit"
+    },
+    "game": {
+        "yourTurn": "El teu torn",
+        "waitingTurn": "Torn: {{name}}",
+        "score": "Puntuació",
+        "tilesLeft": "Fitxes restants",
+        "play": "Jugar",
+        "pass": "Passar",
+        "exchange": "Canviar",
+        "shuffle": "Barrejar",
+        "submit": "Enviar Paraula",
+        "cancel": "Cancel·lar",
+        "invalidWord": "Paraula invàlida",
+        "points": "punts",
+        "bingo": "BINGO! +50 extra",
+        "gameOver": "Partida Acabada",
+        "winner": "Guanyador",
+        "playAgain": "Tornar a Jugar",
+        "leave": "Sortir",
+        "zoomIn": "Apropar",
+        "zoomOut": "Allunyar"
+    },
+    "board": {
+        "TW": "TP",
+        "DW": "DP",
+        "TL": "TL",
+        "DL": "DL",
+        "center": "★"
+    },
+    "settings": {
+        "title": "Ajustaments del Joc",
+        "sound": "Efectes de So",
+        "soundDesc": "Activa o desactiva els sons",
+        "notifications": "Notificacions de Torn",
+        "notificationsDesc": "Rep un avís quan et toqui",
+        "notificationsDenied": "⚠️ Les notificacions estan bloquejades al teu navegador. Activa-les a la configuració del lloc per rebre avisos.",
+        "language": "Idioma",
+        "languageDesc": "Canviar idioma de la interfície"
+    },
+    "sidebar": {
+        "chat": "Xat",
+        "history": "Historial"
+    },
+    "chat": {
+        "title": "XAT DEL JOC",
+        "showHistory": "Mostrar Historial",
+        "empty": "Comença la conversa!",
+        "placeholder": "Escriu un missatge..."
+    },
+    "history": {
+        "empty": "Encara no hi ha historial",
+        "passed": "Ha passat el torn",
+        "exchanged": "Ha canviat {{count}} fitxes",
+        "penalty": "Paraula invàlida! Ha perdut el torn."
+    },
+    "languages": {
+        "ca": "Català",
+        "en": "English",
+        "es": "Español"
+    },
+    "errors": {
+        "connection": "Error de connexió",
+        "gameNotFound": "Partida no trobada",
+        "gameFull": "La partida és plena",
+        "invalidMove": "Moviment invàlid",
+        "notYourTurn": "No és el teu torn"
+    }
+}
