@@ -528,6 +528,12 @@ io.on('connection', (socket) => {
                 return safeCallback(callback, { success: false, error: 'Game not found' });
             }
 
+            // Check for duplicate username (case-insensitive)
+            const nameExists = game.players.some(p => p.name.toLowerCase() === playerName.toLowerCase());
+            if (nameExists) {
+                return safeCallback(callback, { success: false, error: 'Username already taken in this game' });
+            }
+
             if (!currentPlayerId) {
                 currentPlayerId = uuidv4();
                 createPlayer(currentPlayerId, playerName);

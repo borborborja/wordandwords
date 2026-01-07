@@ -224,6 +224,19 @@
     filter: brightness(1.2);
 }
 
+.chip.btn-host-link {
+    background: rgba(255, 193, 7, 0.2);
+    color: #ffc107;
+    border: 1px dashed rgba(255, 193, 7, 0.5);
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.chip.btn-host-link:hover {
+    background: rgba(255, 193, 7, 0.3);
+    transform: translateY(-1px);
+}
+
 .link-icon {
     font-size: 0.8rem;
     opacity: 0.7;

@@ -433,6 +433,19 @@ function GamesTab({ games, refresh, token, setViewingGame, config }) {
                                                 <span className="link-icon">🔗</span>
                                             </div>
                                         ))}
+                                        {/* Host Link Button for Waiting Games */}
+                                        {g.status === 'waiting' && g.players.length > 0 && (
+                                            <button
+                                                className="chip btn-host-link"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleCopyLink(g.id, g.players[0].id);
+                                                }}
+                                                title="Copiar Enlace de Host (Admin)"
+                                            >
+                                                🔑 Host Link
+                                            </button>
+                                        )}
                                     </div>
                                 </td>
                                 <td>{g.inactiveMinutes} min</td>

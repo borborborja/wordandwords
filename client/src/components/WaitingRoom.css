@@ -163,3 +163,84 @@
     font-size: 0.875rem;
     padding: var(--space-md);
 }
+
+/* Share Buttons */
+.share-buttons {
+    display: flex;
+    gap: var(--space-sm);
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-top: var(--space-md);
+}
+
+.btn-share {
+    flex: 1;
+    min-width: 120px;
+    padding: var(--space-sm) var(--space-md);
+    border: none;
+    border-radius: var(--radius-sm);
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.2s, opacity 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    color: white;
+}
+
+.btn-share:hover {
+    transform: translateY(-2px);
+    opacity: 0.9;
+}
+
+.btn-share.whatsapp {
+    background-color: #25D366;
+}
+
+.btn-share.telegram {
+    background-color: #0088cc;
+}
+
+.btn-share.copy-link {
+    background-color: var(--glass-border);
+    backdrop-filter: blur(5px);
+}
+
+/* Admin Link Section */
+.admin-link-section {
+    margin-top: var(--space-xl);
+    padding: var(--space-md);
+    background: rgba(255, 193, 7, 0.1);
+    border: 1px solid rgba(255, 193, 7, 0.3);
+    border-radius: var(--radius-md);
+    text-align: left;
+}
+
+.admin-link-section summary {
+    cursor: pointer;
+    font-weight: bold;
+    color: #ffc107;
+    list-style: none;
+    /* Hide default triangle in some browsers */
+}
+
+.admin-link-section summary::-webkit-details-marker {
+    display: none;
+}
+
+.admin-link-content {
+    margin-top: var(--space-md);
+    animation: fadeIn 0.3s ease;
+}
+
+.admin-link-warning {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    margin-bottom: var(--space-md);
+    line-height: 1.4;
+}
+
+.admin-link-warning strong {
+    color: #ffc107;
+}
