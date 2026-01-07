@@ -138,6 +138,71 @@ export default function Settings({ isOpen, onClose, t, uiLanguage, onUiLanguageC
                         </label>
                     </div>
 
+                    <div className="settings-item">
+                        <div className="settings-item-info">
+                            <span className="settings-item-icon">🔑</span>
+                            <div className="settings-item-text">
+                                <span className="settings-item-label">
+                                    {t('settings.recovery') || 'Recuperar Sesión'}
+                                </span>
+                                <span className="settings-item-desc">
+                                    {t('settings.recoveryDesc') || 'Copia este enlace para entrar desde otro dispositivo'}
+                                </span>
+                            </div>
+                        </div>
+                        <button
+                            className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+                            style={{
+                                background: 'var(--primary)',
+                                border: 'none',
+                                borderRadius: '8px',
+                                padding: '8px 12px',
+                                color: 'white',
+                                cursor: 'pointer',
+                                fontSize: '0.9rem'
+                            }}
+                            onClick={() => {
+                                const playerId = localStorage.getItem('playerId');
+                                const gameId = localStorage.getItem('gameId');
+                                if (playerId && gameId) {
+                                    const baseUrl = import.meta.env.VITE_PUBLIC_URL || window.location.origin;
+                                    const url = `${baseUrl}/?game_id=${gameId}&recover_uid=${playerId}`;
+
+                                    // Try Clipboard API first
+                                    if (navigator.clipboard && window.isSecureContext) {
+                                        navigator.clipboard.writeText(url).then(() => {
+                                            alert(t('settings.linkCopied') || 'Enlace copiado al portapapeles');
+                                        }).catch(() => fallbackCopyTextToClipboard(url));
+                                    } else {
+                                        // Fallback
+                                        fallbackCopyTextToClipboard(url);
+                                    }
+
+                                    function fallbackCopyTextToClipboard(text) {
+                                        const textArea = document.createElement("textarea");
+                                        textArea.value = text;
+                                        textArea.style.position = "fixed";  // Avoid scrolling to bottom
+                                        document.body.appendChild(textArea);
+                                        textArea.focus();
+                                        textArea.select();
+                                        try {
+                                            document.execCommand('copy');
+                                            alert(t('settings.linkCopied') || 'Enlace copiado al portapapeles');
+                                        } catch (err) {
+                                            console.error('Fallback: Oops, unable to copy', err);
+                                            prompt('Copia este enlace manualmente:', text);
+                                        }
+                                        document.body.removeChild(textArea);
+                                    }
+                                } else {
+                                    alert(t('settings.noGame') || 'No tienes una partida activa para recuperar');
+                                }
+                            }}
+                        >
+                            🔗 {t('settings.copyLink') || 'Copiar Enlace'}
+                        </button>
+                    </div>
+
                     {notificationPermission === 'denied' && (
                         <div className="settings-warning">
                             ⚠️ {t('settings.notificationsDenied') || 'Las notificaciones están bloqueadas en tu navegador. Actívalas en la configuración del navegador.'}

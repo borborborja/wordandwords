@@ -39,6 +39,7 @@ export function createGame(id, language, creatorId, creatorName, options = {}) {
         timeLimit: options.timeLimit || null, // null (infinite), 60, 180, 300
         enableChat: options.enableChat !== false, // default true
         enableHistory: options.enableHistory !== false, // default true
+        qAsQu: options.qAsQu || false, // Treat Q as QU (Catalan rule)
         board: createEmptyBoard(),
         tileBag: remaining,
         players: [{
@@ -235,7 +236,7 @@ export function makeMove(game, playerId, placedTiles) {
     }
 
     // Validate words
-    const wordValidation = validateMove(placedTiles, game.board, game.language);
+    const wordValidation = validateMove(placedTiles, game.board, game.language, { qAsQu: game.qAsQu });
     if (!wordValidation.isValid) {
         if (!game.strictMode) {
             // Default behavior: allow retry
@@ -251,7 +252,7 @@ export function makeMove(game, playerId, placedTiles) {
                 words: wordValidation.invalidWords.map(w => w.text),
                 score: 0,
                 type: 'penalty',
-                type: 'penalty',
+
                 timestamp: Date.now()
             });
 
@@ -265,7 +266,9 @@ export function makeMove(game, playerId, placedTiles) {
                     details: wordValidation.invalidWords.map(w => w.text).join(', '),
                     score: 0,
                     timeTaken: game.turnStartTime ? Math.round((Date.now() - game.turnStartTime) / 1000) : 0,
-                    timestamp: Date.now()
+                    timestamp: Date.now(),
+                    boardSnapshot: JSON.parse(JSON.stringify(game.board)),
+                    racksSnapshot: game.players.map(p => ({ id: p.id, name: p.name, tiles: [...p.tiles], score: p.score }))
                 });
             }
 
@@ -321,7 +324,9 @@ export function makeMove(game, playerId, placedTiles) {
             details: words.map(w => w.text).join(', '),
             score,
             timeTaken: game.turnStartTime ? Math.round((Date.now() - game.turnStartTime) / 1000) : 0,
-            timestamp: Date.now()
+            timestamp: Date.now(),
+            boardSnapshot: JSON.parse(JSON.stringify(game.board)),
+            racksSnapshot: game.players.map(p => ({ id: p.id, name: p.name, tiles: [...p.tiles], score: p.score }))
         });
     }
 
@@ -373,7 +378,9 @@ export function passTurn(game, playerId) {
             details: null,
             score: 0,
             timeTaken: game.turnStartTime ? Math.round((Date.now() - game.turnStartTime) / 1000) : 0,
-            timestamp: Date.now()
+            timestamp: Date.now(),
+            boardSnapshot: JSON.parse(JSON.stringify(game.board)),
+            racksSnapshot: game.players.map(p => ({ id: p.id, name: p.name, tiles: [...p.tiles], score: p.score }))
         });
     }
 
@@ -456,7 +463,9 @@ export function exchangeTiles(game, playerId, tilesToExchange) {
             details: `${tilesToExchange.length} tiles`,
             score: 0,
             timeTaken: game.turnStartTime ? Math.round((Date.now() - game.turnStartTime) / 1000) : 0,
-            timestamp: Date.now()
+            timestamp: Date.now(),
+            boardSnapshot: JSON.parse(JSON.stringify(game.board)),
+            racksSnapshot: game.players.map(p => ({ id: p.id, name: p.name, tiles: [...p.tiles], score: p.score }))
         });
     }
 

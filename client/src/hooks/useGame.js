@@ -29,6 +29,30 @@ export function useGame(socket) {
             });
         };
 
+        const handlePlayerReconnected = ({ playerId: reconnectedId }) => {
+            setGame(prev => {
+                if (!prev) return prev;
+                return {
+                    ...prev,
+                    players: prev.players.map(p =>
+                        p.id === reconnectedId ? { ...p, connected: true } : p
+                    )
+                };
+            });
+        };
+
+        const handlePlayerDisconnected = ({ playerId: disconnectedId }) => {
+            setGame(prev => {
+                if (!prev) return prev;
+                return {
+                    ...prev,
+                    players: prev.players.map(p =>
+                        p.id === disconnectedId ? { ...p, connected: false } : p
+                    )
+                };
+            });
+        };
+
         const handleGameStarted = ({ game: updatedGame }) => {
             setGame(updatedGame);
         };
@@ -39,12 +63,16 @@ export function useGame(socket) {
 
         const unsubUpdate = socket.on('gameUpdate', handleGameUpdate);
         const unsubJoined = socket.on('playerJoined', handlePlayerJoined);
+        const unsubReconnected = socket.on('playerReconnected', handlePlayerReconnected);
+        const unsubDisconnected = socket.on('playerDisconnected', handlePlayerDisconnected);
         const unsubStarted = socket.on('gameStarted', handleGameStarted);
         const unsubEnded = socket.on('gameEnded', handleGameEnded);
 
         return () => {
             unsubUpdate?.();
             unsubJoined?.();
+            unsubReconnected?.();
+            unsubDisconnected?.();
             unsubStarted?.();
             unsubEnded?.();
         };
@@ -54,7 +82,7 @@ export function useGame(socket) {
         setLoading(true);
         setError(null);
 
-        const { strictMode = false, timeLimit = null, enableChat = true, enableHistory = true } = options;
+        const { strictMode = false, timeLimit = null, enableChat = true, enableHistory = true, qAsQu = false } = options;
 
         try {
             const response = await socket.emit('createGame', {
@@ -63,7 +91,8 @@ export function useGame(socket) {
                 strictMode,
                 timeLimit,
                 enableChat,
-                enableHistory
+                enableHistory,
+                qAsQu
             });
             setGame(response.game);
             setPlayerId(response.game.players[0].id);
@@ -109,7 +138,10 @@ export function useGame(socket) {
         setError(null);
 
         try {
-            await socket.emit('startGame');
+            const response = await socket.emit('startGame');
+            if (response && response.game) {
+                setGame(response.game);
+            }
         } catch (err) {
             setError(err.message);
             throw err;

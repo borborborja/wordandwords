@@ -22,6 +22,11 @@ import {
     createPlayer,
     saveGame,
     getActiveGames,
+    getArchivedGames,
+    archiveGame,
+    updateGameTitle,
+    deleteGame,
+    getGame,
     cleanupOldGames
 } from './db/database.js';
 
@@ -72,7 +77,7 @@ app.get('/api/health', (req, res) => {
 });
 
 app.get('/api/config', (req, res) => {
-    res.json({ gameName: GAME_NAME });
+    res.json({ gameName: serverConfig.gameName || GAME_NAME });
 });
 
 app.get('/api/board-layout', (req, res) => {
@@ -109,6 +114,32 @@ app.get('/api/games/:id', (req, res) => {
 // Admin API endpoints
 // =====================
 
+// Configuration Management
+const CONFIG_FILE = path.join(__dirname, 'config.json');
+let serverConfig = {
+    gameName: process.env.GAME_NAME || 'WordAndWords',
+    serverUrl: '', // To be set by admin
+};
+
+// Load config
+try {
+    if (fs.existsSync(CONFIG_FILE)) {
+        const data = fs.readFileSync(CONFIG_FILE, 'utf8');
+        serverConfig = { ...serverConfig, ...JSON.parse(data) };
+        console.log('Loaded server config:', serverConfig);
+    }
+} catch (err) {
+    console.error('Error loading config:', err);
+}
+
+function saveConfig() {
+    try {
+        fs.writeFileSync(CONFIG_FILE, JSON.stringify(serverConfig, null, 2));
+    } catch (err) {
+        console.error('Error saving config:', err);
+    }
+}
+
 // Middleware to verify admin password
 function adminAuth(req, res, next) {
     const authHeader = req.headers.authorization;
@@ -132,6 +163,21 @@ app.post('/api/admin/login', (req, res) => {
     } else {
         res.status(403).json({ success: false, error: 'Invalid password' });
     }
+});
+
+// GET Config
+app.get('/api/admin/config', adminAuth, (req, res) => {
+    res.json(serverConfig);
+});
+
+// UPDATE Config
+app.put('/api/admin/config', adminAuth, (req, res) => {
+    const { gameName, serverUrl } = req.body;
+    if (gameName) serverConfig.gameName = gameName;
+    if (serverUrl !== undefined) serverConfig.serverUrl = serverUrl;
+
+    saveConfig();
+    res.json({ success: true, config: serverConfig });
 });
 
 // Get dictionary for a language
@@ -259,20 +305,28 @@ app.get('/api/admin/games', adminAuth, (req, res) => {
     res.json({ games: gamesList });
 });
 
+// Get specific game details (including board state) for Admin debug
+app.get('/api/admin/games/:gameId/details', adminAuth, (req, res) => {
+    const game = games.get(req.params.gameId);
+    if (!game) return res.status(404).json({ error: 'Game not found' });
+    res.json(game);
+});
+
 // Delete a specific game
 app.delete('/api/admin/games/:gameId', adminAuth, (req, res) => {
     const { gameId } = req.params;
     const game = games.get(gameId);
 
-    if (!game) {
-        return res.status(404).json({ error: 'Game not found' });
+    // Notify connected players that game was terminated
+    if (game) {
+        io.to(gameId).emit('gameTerminated', { reason: 'Game deleted by administrator' });
     }
 
-    // Notify connected players that game was terminated
-    io.to(gameId).emit('gameTerminated', { reason: 'Game deleted by administrator' });
-
-    // Remove game
+    // Remove from memory
     games.delete(gameId);
+
+    // Remove from database
+    deleteGame(gameId);
 
     res.json({ success: true, gameId });
 });
@@ -290,11 +344,99 @@ app.post('/api/admin/cleanup-ghosts', adminAuth, (req, res) => {
 
         if (!hasConnectedPlayers && inactiveMinutes > maxInactiveMinutes) {
             games.delete(id);
+            deleteGame(id); // Also delete from database
             cleaned++;
         }
     }
 
     res.json({ success: true, cleaned, remaining: games.size });
+});
+
+// =====================
+// Archive Management
+// =====================
+
+// Archive a finished game
+app.post('/api/admin/games/:gameId/archive', adminAuth, (req, res) => {
+    const { gameId } = req.params;
+    const { title } = req.body;
+
+    // Get game from memory or database
+    let game = games.get(gameId);
+    if (!game) {
+        game = getGame(gameId);
+    }
+
+    if (!game) {
+        return res.status(404).json({ error: 'Game not found' });
+    }
+
+    if (game.status !== 'finished') {
+        return res.status(400).json({ error: 'Only finished games can be archived' });
+    }
+
+    const archived = archiveGame(gameId, title);
+
+    // Remove from active games cache
+    games.delete(gameId);
+
+    res.json({ success: true, game: archived });
+});
+
+// Get archived games
+app.get('/api/admin/archived-games', adminAuth, (req, res) => {
+    const archived = getArchivedGames();
+    res.json({ games: archived });
+});
+
+// Update archived game title
+app.put('/api/admin/archived-games/:gameId', adminAuth, (req, res) => {
+    const { gameId } = req.params;
+    const { title } = req.body;
+
+    const updated = updateGameTitle(gameId, title);
+
+    if (!updated) {
+        return res.status(404).json({ error: 'Game not found' });
+    }
+
+    res.json({ success: true });
+});
+
+// Delete archived game
+app.delete('/api/admin/archived-games/:gameId', adminAuth, (req, res) => {
+    const { gameId } = req.params;
+
+    const deleted = deleteGame(gameId);
+
+    res.json({ success: deleted, gameId });
+});
+
+// Public endpoint - Get archived game for replay (no auth required)
+app.get('/api/replay/:gameId', (req, res) => {
+    const { gameId } = req.params;
+
+    const game = getGame(gameId);
+
+    if (!game) {
+        return res.status(404).json({ error: 'Game not found' });
+    }
+
+    if (game.status !== 'archived') {
+        return res.status(403).json({ error: 'Only archived games can be replayed' });
+    }
+
+    // Return game data for replay (full history, board states, etc.)
+    res.json({
+        id: game.id,
+        title: game.title,
+        language: game.language,
+        players: game.players.map(p => ({ id: p.id, name: p.name, score: p.score })),
+        historyLogs: game.historyLogs || [],
+        board: game.board,
+        createdAt: game.createdAt,
+        finishedAt: game.lastActivity
+    });
 });
 
 // =====================
@@ -349,7 +491,8 @@ io.on('connection', (socket) => {
                 strictMode: data.strictMode,
                 timeLimit: data.timeLimit,
                 enableChat: data.enableChat,
-                enableHistory: data.enableHistory
+                enableHistory: data.enableHistory,
+                qAsQu: data.qAsQu
             });
 
             games.set(gameId, game);
@@ -450,7 +593,10 @@ io.on('connection', (socket) => {
                 }
             });
 
-            safeCallback(callback, { success: true });
+            safeCallback(callback, {
+                success: true,
+                game: getGameStateForPlayer(game, currentPlayerId)
+            });
             console.log(`Game ${currentGameId} started`);
         } catch (error) {
             console.error('Start game error:', error);

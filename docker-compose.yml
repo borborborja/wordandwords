@@ -8,6 +8,8 @@ services:
     volumes:
       # Persist SQLite database
       - ./data:/app/data
+      # Persist dictionaries
+      - ./dictionaries:/app/server/dictionaries
     environment:
       - NODE_ENV=production
       - DATA_DIR=/app/data

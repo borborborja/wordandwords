@@ -5,6 +5,7 @@ import TileRack from './TileRack';
 import GameSidebar from './GameSidebar';
 import MobileChatModal from './MobileChatModal';
 import Scoreboard from './Scoreboard';
+import GameHistory from './GameHistory';
 import Settings, { sendTurnNotification } from './Settings';
 import { soundManager } from '../utils/SoundManager';
 import './Game.css';
@@ -34,6 +35,7 @@ export default function Game({
     const [timeLeft, setTimeLeft] = useState(null);
     const [showSettings, setShowSettings] = useState(false);
     const [isChatOpen, setIsChatOpen] = useState(false);
+    const [viewingSnapshot, setViewingSnapshot] = useState(null);
 
     // Track previous turn state for notifications
     const wasMyTurnRef = useRef(isMyTurn);
@@ -205,6 +207,39 @@ export default function Game({
     })).filter(t => !placedTiles.some(p => p.rackIndex === t.originalIndex)) || [];
 
     const currentTurnPlayer = game?.players?.[game?.currentPlayerIndex];
+
+    // Snapshot Modal Renderer
+    const renderSnapshotModal = () => {
+        if (!viewingSnapshot) return null;
+
+        // viewingSnapshot can be a log object or the old format (just board)
+        const boardToShow = viewingSnapshot.boardSnapshot || viewingSnapshot;
+        const snapshotInfo = viewingSnapshot.playerName
+            ? `${viewingSnapshot.playerName} - ${viewingSnapshot.action}`
+            : 'Historical State';
+
+        return (
+            <div className="modal-overlay" style={{ zIndex: 3000 }} onClick={() => setViewingSnapshot(null)}>
+                <div className="modal glass animate-fade-in" onClick={e => e.stopPropagation()} style={{ width: '90%', maxWidth: '600px' }}>
+                    <div className="modal-header" style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'space-between' }}>
+                        <h3>📸 {snapshotInfo}</h3>
+                        <button className="close-btn" onClick={() => setViewingSnapshot(null)}>✕</button>
+                    </div>
+                    <div className="board-container pointer-events-none">
+                        <Board
+                            boardState={boardToShow}
+                            placedTiles={[]}
+                            onCellClick={() => { }}
+                            onCellDrop={() => { }}
+                            onTileRemove={() => { }}
+                            disabled={true}
+                            t={t}
+                        />
+                    </div>
+                </div>
+            </div>
+        );
+    };
 
     return (
         <div className="game-page">
@@ -423,12 +458,31 @@ export default function Game({
                             ))}
                         </div>
 
-                        <button className="btn btn-primary" onClick={onLeave}>
+                        <div className="game-over-history" style={{
+                            marginTop: '2rem',
+                            borderTop: '1px solid rgba(255,255,255,0.1)',
+                            paddingTop: '1rem',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            maxHeight: '300px'
+                        }}>
+                            <h4 style={{ marginBottom: '1rem', color: 'var(--text-secondary)' }}>Full Game History</h4>
+                            <div style={{ flex: 1, overflowY: 'auto', background: 'rgba(0,0,0,0.2)', borderRadius: 'var(--radius-md)' }}>
+                                <GameHistory
+                                    history={game.historyLogs || []}
+                                    t={t}
+                                    onViewSnapshot={setViewingSnapshot}
+                                />
+                            </div>
+                        </div>
+
+                        <button className="btn btn-primary" onClick={onLeave} style={{ marginTop: '1.5rem' }}>
                             {t('game.playAgain')}
                         </button>
                     </div>
                 </div>
             )}
+            {renderSnapshotModal()}
             {/* Settings Modal */}
             <Settings
                 isOpen={showSettings}

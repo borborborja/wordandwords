@@ -59,9 +59,9 @@ export function isValidWord(word, language) {
 }
 
 // Get all valid words formed on the board (main word + cross words)
-export function validateMove(tiles, board, language) {
+export function validateMove(tiles, board, language, options = {}) {
     // Extract words formed by the move
-    const words = extractWordsFromMove(tiles, board);
+    const words = extractWordsFromMove(tiles, board, options.qAsQu);
 
     const validatedWords = [];
     const invalidWords = [];
@@ -82,7 +82,7 @@ export function validateMove(tiles, board, language) {
 }
 
 // Extract all words formed by placing tiles
-function extractWordsFromMove(placedTiles, board) {
+function extractWordsFromMove(placedTiles, board, qAsQu = false) {
     const words = [];
 
     if (placedTiles.length === 0) return words;
@@ -102,21 +102,21 @@ function extractWordsFromMove(placedTiles, board) {
 
     // Extract the main word
     if (isHorizontal) {
-        const word = extractHorizontalWord(placedTiles[0].row, Math.min(...cols), tempBoard);
-        if (word.text.length > 1) words.push(word);
+        const word = extractHorizontalWord(placedTiles[0].row, Math.min(...cols), tempBoard, qAsQu);
+        if (word.positions.length > 1) words.push(word);
     } else if (isVertical) {
-        const word = extractVerticalWord(Math.min(...rows), placedTiles[0].col, tempBoard);
-        if (word.text.length > 1) words.push(word);
+        const word = extractVerticalWord(Math.min(...rows), placedTiles[0].col, tempBoard, qAsQu);
+        if (word.positions.length > 1) words.push(word);
     }
 
     // Extract cross words for each placed tile
     for (const tile of placedTiles) {
         if (isHorizontal) {
-            const crossWord = extractVerticalWord(tile.row, tile.col, tempBoard);
-            if (crossWord.text.length > 1) words.push(crossWord);
+            const crossWord = extractVerticalWord(tile.row, tile.col, tempBoard, qAsQu);
+            if (crossWord.positions.length > 1) words.push(crossWord);
         } else {
-            const crossWord = extractHorizontalWord(tile.row, tile.col, tempBoard);
-            if (crossWord.text.length > 1) words.push(crossWord);
+            const crossWord = extractHorizontalWord(tile.row, tile.col, tempBoard, qAsQu);
+            if (crossWord.positions.length > 1) words.push(crossWord);
         }
     }
 
@@ -124,7 +124,7 @@ function extractWordsFromMove(placedTiles, board) {
 }
 
 // Extract horizontal word starting from a position
-function extractHorizontalWord(row, startCol, board) {
+function extractHorizontalWord(row, startCol, board, qAsQu = false) {
     // Find the start of the word
     let col = startCol;
     while (col > 0 && board[row][col - 1]) col--;
@@ -132,7 +132,12 @@ function extractHorizontalWord(row, startCol, board) {
     let word = '';
     const positions = [];
     while (col < 15 && board[row][col]) {
-        word += board[row][col];
+        const cell = board[row][col];
+        if (qAsQu && cell === 'Q') {
+            word += 'QU';
+        } else {
+            word += cell;
+        }
         positions.push({ row, col });
         col++;
     }
@@ -141,7 +146,7 @@ function extractHorizontalWord(row, startCol, board) {
 }
 
 // Extract vertical word starting from a position
-function extractVerticalWord(startRow, col, board) {
+function extractVerticalWord(startRow, col, board, qAsQu = false) {
     // Find the start of the word
     let row = startRow;
     while (row > 0 && board[row - 1][col]) row--;
@@ -149,7 +154,12 @@ function extractVerticalWord(startRow, col, board) {
     let word = '';
     const positions = [];
     while (row < 15 && board[row][col]) {
-        word += board[row][col];
+        const cell = board[row][col];
+        if (qAsQu && cell === 'Q') {
+            word += 'QU';
+        } else {
+            word += cell;
+        }
         positions.push({ row, col });
         row++;
     }

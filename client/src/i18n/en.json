@@ -56,7 +56,12 @@
         "notificationsDesc": "Get notified when it's your turn",
         "notificationsDenied": "⚠️ Notifications are blocked in your browser. Enable them in site settings to get alerts.",
         "language": "Language",
-        "languageDesc": "Change interface language"
+        "languageDesc": "Change interface language",
+        "recovery": "Session Recovery",
+        "recoveryDesc": "Link to join from another device",
+        "linkCopied": "Link copied to clipboard",
+        "noGame": "No active game to recover",
+        "copyLink": "Copy Link"
     },
     "sidebar": {
         "chat": "Chat",

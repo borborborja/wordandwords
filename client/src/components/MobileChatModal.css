@@ -10,10 +10,10 @@
 
 @media (max-width: 480px) {
     .chat-modal {
-        width: 100%;
-        height: 100dvh;
+        width: 95vw;
+        height: 85dvh;
         max-width: none;
-        border-radius: 0;
+        border-radius: var(--radius-lg);
     }
 }
 

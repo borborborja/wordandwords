@@ -245,6 +245,10 @@
     color: #2d1810;
     opacity: 0.3;
     animation: float 6s ease-in-out infinite;
+    /* Fix for rendering glitches (black boxes) */
+    backface-visibility: hidden;
+    transform: translate3d(0, 0, 0);
+    will-change: transform;
 }
 
 .tile-1 {

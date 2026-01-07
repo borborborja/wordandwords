@@ -6,6 +6,7 @@ import Lobby from './components/Lobby';
 import WaitingRoom from './components/WaitingRoom';
 import Game from './components/Game';
 import Admin from './components/Admin';
+import GameReplay from './components/GameReplay';
 import './App.css';
 
 const API_URL = import.meta.env.PROD ? '' : `http://${window.location.hostname}:3001`;
@@ -22,6 +23,7 @@ export default function App() {
 
     const [showAdmin, setShowAdmin] = useState(false);
     const [gameName, setGameName] = useState('WordAndWords');
+    const [replayGameId, setReplayGameId] = useState(null);
 
     const { t } = useTranslation(uiLanguage);
     const socket = useSocket();
@@ -45,12 +47,73 @@ export default function App() {
         localStorage.setItem('uiLanguage', uiLanguage);
     }, [uiLanguage]);
 
-    // Try to rejoin game on mount
+    // Handle initial Magic Link / Recovery URL / Replay URL
+    useEffect(() => {
+        // Check for replay URL first
+        const pathMatch = window.location.pathname.match(/^\/replay\/([a-zA-Z0-9-]+)/);
+        if (pathMatch) {
+            setReplayGameId(pathMatch[1]);
+            return; // Don't process other URL params for replay
+        }
+
+        const params = new URLSearchParams(window.location.search);
+        const recoverUid = params.get('recover_uid');
+        const recoverGameId = params.get('game_id');
+
+        if (recoverUid && recoverGameId) {
+            // Overwrite local credentials with recovery ones
+            localStorage.setItem('playerId', recoverUid);
+            localStorage.setItem('gameId', recoverGameId);
+
+            // Clean URL without reloading
+            const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+            window.history.pushState({ path: newUrl }, '', newUrl);
+        }
+    }, []);
+
+    // Try to rejoin game on mount and on reconnection
     useEffect(() => {
         if (socket.connected) {
             gameState.rejoinGame();
         }
-    }, [socket.connected]);
+
+        // Also rejoin when socket reconnects after a disconnect
+        const unsubReconnect = socket.onReconnect?.(() => {
+            console.log('Socket reconnected - attempting to rejoin game');
+            gameState.rejoinGame();
+        });
+
+        return () => {
+            unsubReconnect?.();
+        };
+    }, [socket.connected, socket.onReconnect]);
+
+    // Sync game state when tab/app becomes visible again (critical for mobile/async games)
+    useEffect(() => {
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'visible' && socket.connected) {
+                console.log('Tab became visible - syncing game state');
+                gameState.rejoinGame();
+            }
+        };
+
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+
+        // Also handle when window regains focus (desktop browsers)
+        const handleFocus = () => {
+            if (socket.connected && localStorage.getItem('gameId')) {
+                console.log('Window focused - syncing game state');
+                gameState.rejoinGame();
+            }
+        };
+
+        window.addEventListener('focus', handleFocus);
+
+        return () => {
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+            window.removeEventListener('focus', handleFocus);
+        };
+    }, [socket.connected, gameState.rejoinGame]);
 
     // Connection status indicator
     const ConnectionStatus = () => (
@@ -121,6 +184,19 @@ export default function App() {
             />
         );
     };
+
+    // If in replay mode, show the replay component
+    if (replayGameId) {
+        return (
+            <GameReplay
+                gameId={replayGameId}
+                onBack={() => {
+                    setReplayGameId(null);
+                    window.history.pushState({}, '', '/');
+                }}
+            />
+        );
+    }
 
     return (
         <div className="app">

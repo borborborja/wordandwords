@@ -72,3 +72,26 @@
     margin-top: var(--space-xl);
     font-style: italic;
 }
+
+.history-meta {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+}
+
+.btn-icon-tiny {
+    background: transparent;
+    border: none;
+    font-size: 0.9rem;
+    cursor: pointer;
+    padding: 2px;
+    border-radius: 4px;
+    opacity: 0.7;
+    transition: all 0.2s;
+}
+
+.btn-icon-tiny:hover {
+    background: rgba(255, 255, 255, 0.1);
+    opacity: 1;
+    transform: scale(1.1);
+}

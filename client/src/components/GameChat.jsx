@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import './GameChat.css';
 
-export default function GameChat({ messages = [], history = [], onSendMessage, t, currentUserId }) {
+export default function GameChat({ messages = [], history = [], onSendMessage, t, currentUserId, embedded = false }) {
     const [inputText, setInputText] = useState('');
     const [showHistory, setShowHistory] = useState(false);
     const scrollRef = useRef(null);
@@ -20,17 +20,19 @@ export default function GameChat({ messages = [], history = [], onSendMessage, t
         return combined.sort((a, b) => a.timestamp - b.timestamp);
     }, [messages, history, showHistory]);
 
+    const scrollToBottom = () => {
+        scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
+    };
+
     // Auto-scroll
     useEffect(() => {
-        if (scrollRef.current) {
-            scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-        }
-    }, [items]);
+        scrollToBottom();
+    }, [items, showHistory]);
 
     const handleSubmit = (e) => {
         e.preventDefault();
         if (inputText.trim()) {
-            onSendMessage(inputText);
+            onSendMessage(inputText.trim());
             setInputText('');
         }
     };
@@ -40,18 +42,22 @@ export default function GameChat({ messages = [], history = [], onSendMessage, t
     };
 
     return (
-        <div className="game-chat glass">
-            <div className="chat-header">
-                <span className="chat-title">{t('chat.title') || 'Chat'}</span>
-                <label className="chat-toggle">
-                    <input
-                        type="checkbox"
-                        checked={showHistory}
-                        onChange={(e) => setShowHistory(e.target.checked)}
-                    />
-                    <span className="toggle-label">{t('chat.showHistory') || 'Show History'}</span>
-                </label>
-            </div>
+        <div className={`game-chat ${embedded ? 'embedded' : ''}`}>
+            {(!embedded || history.length > 0) && (
+                <div className={`chat-header ${embedded ? 'embedded-header' : ''}`}>
+                    {!embedded && <h3>{t('chat.title') || 'CHAT DEL JUEGO'}</h3>}
+                    {history.length > 0 && (
+                        <label className="show-history-label">
+                            <input
+                                type="checkbox"
+                                checked={showHistory}
+                                onChange={(e) => setShowHistory(e.target.checked)}
+                            />
+                            {t('chat.showHistory') || 'Mostrar Historial'}
+                        </label>
+                    )}
+                </div>
+            )}
 
             <div className="chat-messages" ref={scrollRef}>
                 {items.length === 0 ? (

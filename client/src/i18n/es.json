@@ -56,7 +56,12 @@
         "notificationsDesc": "Recibe un aviso cuando te toque",
         "notificationsDenied": "⚠️ Las notificaciones están bloqueadas en tu navegador. Actívalas en la configuración del sitio para recibir avisos.",
         "language": "Idioma",
-        "languageDesc": "Cambiar idioma de la interfaz"
+        "languageDesc": "Cambiar idioma de la interfaz",
+        "recovery": "Recuperar Sesión",
+        "recoveryDesc": "Enlace para entrar desde otro dispositivo",
+        "linkCopied": "Enlace copiado al portapapeles",
+        "noGame": "No tienes una partida activa para recuperar",
+        "copyLink": "Copiar Enlace"
     },
     "sidebar": {
         "chat": "Chat",

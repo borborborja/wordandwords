@@ -22,6 +22,7 @@ export default function Lobby({
     const [timeLimit, setTimeLimit] = useState(null);
     const [enableChat, setEnableChat] = useState(true);
     const [enableHistory, setEnableHistory] = useState(true);
+    const [qAsQu, setQAsQu] = useState(false);
     const [gameCode, setGameCode] = useState(initialGameCode || '');
     const [localName, setLocalName] = useState(playerName);
 
@@ -33,7 +34,8 @@ export default function Lobby({
             strictMode,
             timeLimit,
             enableChat,
-            enableHistory
+            enableHistory,
+            qAsQu: gameLanguage === 'ca' ? qAsQu : false
         });
     };
 
@@ -178,6 +180,17 @@ export default function Lobby({
                                             />
                                             {t('lobby.enableChat')}
                                         </label>
+
+                                        {gameLanguage === 'ca' && (
+                                            <label className="checkbox-label" title="La fitxa Q es juga com el dígraf QU">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={qAsQu}
+                                                    onChange={(e) => setQAsQu(e.target.checked)}
+                                                />
+                                                Q = QU (Regla de clubs)
+                                            </label>
+                                        )}
                                     </div>
                                 </div>
                             </div>

@@ -1,7 +1,9 @@
 class SoundManager {
     constructor() {
         this.ctx = null;
-        this.enabled = true;
+        this.enabled = typeof localStorage !== 'undefined'
+            ? localStorage.getItem('soundEnabled') !== 'false' // default to true
+            : true;
     }
 
     init() {
@@ -13,12 +15,24 @@ class SoundManager {
         }
     }
 
-    toggle() {
-        this.enabled = !this.enabled;
+    toggle(isEnabled) {
+        if (typeof isEnabled !== 'undefined') {
+            this.enabled = isEnabled;
+        } else {
+            this.enabled = !this.enabled;
+        }
         return this.enabled;
     }
 
     _playTone(freq, duration, type = 'sine', startTime = 0) {
+        // Double check local storage if available for sync across tabs/refreshes
+        if (typeof localStorage !== 'undefined') {
+            const stored = localStorage.getItem('soundEnabled');
+            // If stored is strictly 'false', disable. Otherwise true.
+            if (stored === 'false') this.enabled = false;
+            else this.enabled = true;
+        }
+
         if (!this.enabled) return;
         this.init();
 

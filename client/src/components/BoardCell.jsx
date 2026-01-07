@@ -103,8 +103,8 @@ const BoardCell = memo(function BoardCell({
         prevProps.boardLetter === nextProps.boardLetter &&
         prevProps.placedTile === nextProps.placedTile && // Ref equality check for object
         prevProps.isDragOver === nextProps.isDragOver &&
-        prevProps.disabled === nextProps.disabled
-        // We assume functions (onClick, etc.) are stable references from useCallback
+        prevProps.disabled === nextProps.disabled &&
+        prevProps.onClick === nextProps.onClick
     );
 });
 

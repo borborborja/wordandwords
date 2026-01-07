@@ -45,7 +45,7 @@ export default function ChatHistoryPanel({
 
             <div className="sidebar-content">
                 {activeTab === 'history' && showHistory && (
-                    <GameHistory history={historyLogs} t={t} />
+                    <GameHistory history={historyLogs} t={t} embedded={true} />
                 )}
                 {activeTab === 'chat' && showChat && (
                     <GameChat
@@ -53,6 +53,7 @@ export default function ChatHistoryPanel({
                         history={game.enableHistory ? historyLogs : []}
                         onSendMessage={onSendMessage}
                         currentUserId={currentPlayerId}
+                        embedded={true}
                         t={t}
                     />
                 )}

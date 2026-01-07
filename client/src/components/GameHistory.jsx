@@ -1,7 +1,7 @@
 import { useRef, useEffect } from 'react';
 import './GameHistory.css';
 
-export default function GameHistory({ history = [], t }) {
+export default function GameHistory({ history = [], t, embedded = false, onViewSnapshot }) {
     const scrollRef = useRef(null);
 
     // Auto-scroll to bottom
@@ -29,17 +29,28 @@ export default function GameHistory({ history = [], t }) {
     };
 
     return (
-        <div className="game-history glass" ref={scrollRef}>
+        <div className={`game-history ${embedded ? 'embedded' : 'glass'}`} ref={scrollRef}>
             {history.length === 0 ? (
                 <div className="history-empty">
-                    {t('history.empty') || 'No hstory yet'}
+                    {t('history.empty') || 'No history yet'}
                 </div>
             ) : (
                 history.map(log => (
                     <div key={log.id} className={`history-item history-${log.action}`}>
                         <div className="history-header">
                             <span className="history-player">{log.playerName}</span>
-                            <span className="history-time">{formatTime(log.timeTaken)}</span>
+                            <div className="history-meta">
+                                <span className="history-time">{formatTime(log.timeTaken)}</span>
+                                {!embedded && log.boardSnapshot && onViewSnapshot && (
+                                    <button
+                                        className="btn-icon-tiny"
+                                        onClick={() => onViewSnapshot(log)}
+                                        title={t('history.view_board') || "View Board"}
+                                    >
+                                        🔍
+                                    </button>
+                                )}
+                            </div>
                         </div>
                         <div className="history-content">
                             <span className="history-icon">{getActionIcon(log.action)}</span>

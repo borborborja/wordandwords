@@ -56,7 +56,12 @@
         "notificationsDesc": "Rep un avís quan et toqui",
         "notificationsDenied": "⚠️ Les notificacions estan bloquejades al teu navegador. Activa-les a la configuració del lloc per rebre avisos.",
         "language": "Idioma",
-        "languageDesc": "Canviar idioma de la interfície"
+        "languageDesc": "Canviar idioma de la interfície",
+        "recovery": "Recuperar Sessió",
+        "recoveryDesc": "Enllaç per entrar des d'un altre dispositiu",
+        "linkCopied": "Enllaç copiat al porta-retalls",
+        "noGame": "No tens cap partida activa per recuperar",
+        "copyLink": "Copiar Enllaç"
     },
     "sidebar": {
         "chat": "Xat",

@@ -7,25 +7,37 @@ export function useSocket() {
     const socketRef = useRef(null);
     const [connected, setConnected] = useState(false);
     const [error, setError] = useState(null);
+    const reconnectCallbacksRef = useRef([]);
 
     useEffect(() => {
         socketRef.current = io(SOCKET_URL, {
             transports: ['websocket', 'polling'],
             reconnection: true,
-            reconnectionAttempts: 5,
-            reconnectionDelay: 1000
+            reconnectionAttempts: Infinity, // Never give up for async games
+            reconnectionDelay: 1000,
+            reconnectionDelayMax: 30000, // Cap at 30 seconds
+            randomizationFactor: 0.5
         });
 
         socketRef.current.on('connect', () => {
+            console.log('Socket connected');
             setConnected(true);
             setError(null);
         });
 
-        socketRef.current.on('disconnect', () => {
+        socketRef.current.on('disconnect', (reason) => {
+            console.log('Socket disconnected:', reason);
             setConnected(false);
         });
 
+        socketRef.current.on('reconnect', (attemptNumber) => {
+            console.log('Socket reconnected after', attemptNumber, 'attempts');
+            // Call all registered reconnect callbacks
+            reconnectCallbacksRef.current.forEach(cb => cb());
+        });
+
         socketRef.current.on('connect_error', (err) => {
+            console.error('Socket connection error:', err.message);
             setError(err.message);
             setConnected(false);
         });
@@ -61,12 +73,21 @@ export function useSocket() {
         socketRef.current?.off(event, callback);
     }, []);
 
+    // Register a callback to be called on reconnection
+    const onReconnect = useCallback((callback) => {
+        reconnectCallbacksRef.current.push(callback);
+        return () => {
+            reconnectCallbacksRef.current = reconnectCallbacksRef.current.filter(cb => cb !== callback);
+        };
+    }, []);
+
     return {
         socket: socketRef.current,
         connected,
         error,
         emit,
         on,
-        off
+        off,
+        onReconnect
     };
 }
