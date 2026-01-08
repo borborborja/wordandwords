@@ -30,8 +30,10 @@
         "enterEmail": "Email",
         "emailHint": "To access from other devices",
         "haveAccount": "Already have an account?",
-        "loginDesc": "Access with your email",
+        "loginDesc": "Access with your email or code",
         "login": "Login",
+        "loginWithEmail": "Use Email",
+        "loginWithCode": "Use Code",
         "sendLink": "Send link",
         "checkEmail": "Check your email!",
         "linkSent": "We sent you a link to access",
@@ -93,7 +95,12 @@
         "recoveryDesc": "Link to join from another device",
         "linkCopied": "Link copied to clipboard",
         "noGame": "No active game to recover",
-        "copyLink": "Copy Link"
+        "copyLink": "Copy Link",
+        "profileCode": "Profile Code",
+        "profileCodeDesc": "Use this code to access from another device",
+        "linkEmail": "Link Email",
+        "linkEmailDesc": "Add an email to recover your account easily",
+        "enterEmailToLink": "Email to link"
     },
     "sidebar": {
         "chat": "Chat",

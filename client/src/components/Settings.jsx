@@ -3,8 +3,16 @@ import { usePWAInstall } from '../hooks/usePWAInstall';
 import { LANGUAGES } from '../i18n';
 import './Settings.css';
 
-export default function Settings({ isOpen, onClose, t, uiLanguage, onUiLanguageChange }) {
+export default function Settings({ isOpen, onClose, t, uiLanguage, onUiLanguageChange, user, onUpdateUser, profilesEnabled }) {
     const { isInstallable, install } = usePWAInstall();
+    // Email linking state
+    const [linkEmail, setLinkEmail] = useState('');
+    const [emailValidating, setEmailValidating] = useState(false);
+    const [emailValidated, setEmailValidated] = useState(false);
+    const [emailError, setEmailError] = useState('');
+
+    const API_URL = import.meta.env.PROD ? '' : `http://${window.location.hostname}:3001`;
+
     const [soundEnabled, setSoundEnabled] = useState(() => {
         const saved = localStorage.getItem('soundEnabled');
         return saved !== null ? saved === 'true' : true;
@@ -56,6 +64,54 @@ export default function Settings({ isOpen, onClose, t, uiLanguage, onUiLanguageC
             }
         } else {
             setNotificationsEnabled(false);
+        }
+    };
+
+    // Handle email linking validation
+    const handleLinkEmail = async () => {
+        if (!linkEmail.trim() || !linkEmail.includes('@')) return;
+        setEmailValidating(true);
+        setEmailError('');
+
+        try {
+            const res = await fetch(`${API_URL}/api/auth/init-verification`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: linkEmail.trim() })
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                // Poll for verification
+                const pollInterval = setInterval(async () => {
+                    const checkRes = await fetch(`${API_URL}/api/auth/check-verification/${data.token}`);
+                    const checkData = await checkRes.json();
+                    if (checkData.verified) {
+                        clearInterval(pollInterval);
+                        setEmailValidated(true);
+                        setEmailValidating(false);
+                        // Update user with email
+                        if (user && onUpdateUser) {
+                            await onUpdateUser(user.id, { email: linkEmail.trim() });
+                        }
+                    }
+                }, 2000);
+
+                // Timeout after 2 minutes
+                setTimeout(() => {
+                    clearInterval(pollInterval);
+                    if (!emailValidated) {
+                        setEmailValidating(false);
+                        setEmailError('Timeout');
+                    }
+                }, 120000);
+            } else {
+                setEmailError(data.error);
+                setEmailValidating(false);
+            }
+        } catch (err) {
+            setEmailError('Error');
+            setEmailValidating(false);
         }
     };
 
@@ -205,9 +261,67 @@ export default function Settings({ isOpen, onClose, t, uiLanguage, onUiLanguageC
                         </button>
                     </div>
 
+                    {/* Email Linking Section */}
+                    {profilesEnabled && user && !user.email && (
+                        <div className="settings-item">
+                            <div className="settings-item-info">
+                                <span className="settings-item-icon">📧</span>
+                                <div className="settings-item-text">
+                                    <span className="settings-item-label">
+                                        {t('settings.linkEmail') || 'Vincular Email'}
+                                    </span>
+                                    <span className="settings-item-desc">
+                                        {t('settings.linkEmailDesc') || 'Añade un email para recuperar tu cuenta fácilmente'}
+                                    </span>
+                                </div>
+                            </div>
+                            <div className="settings-email-input-group" style={{ display: 'flex', gap: '8px', width: '100%', maxWidth: '250px' }}>
+                                <input
+                                    type="email"
+                                    className="settings-input"
+                                    style={{
+                                        background: 'rgba(255, 255, 255, 0.05)',
+                                        border: '1px solid rgba(255, 255, 255, 0.1)',
+                                        borderRadius: '8px',
+                                        padding: '8px',
+                                        color: 'white',
+                                        flex: 1,
+                                        fontSize: '0.9rem'
+                                    }}
+                                    value={linkEmail}
+                                    onChange={(e) => setLinkEmail(e.target.value)}
+                                    placeholder={t('settings.enterEmailToLink') || "tu@email.com"}
+                                    disabled={emailValidated || emailValidating}
+                                />
+                                {linkEmail.trim() && !emailValidated && (
+                                    <button
+                                        className="settings-btn-action"
+                                        style={{
+                                            background: 'var(--primary)',
+                                            border: 'none',
+                                            borderRadius: '8px',
+                                            padding: '8px 12px',
+                                            color: 'white',
+                                            cursor: 'pointer',
+                                            fontSize: '0.8rem',
+                                            whiteSpace: 'nowrap'
+                                        }}
+                                        onClick={handleLinkEmail}
+                                        disabled={emailValidating}
+                                    >
+                                        {emailValidating ? '...' : (t('lobby.validateEmail') || 'Validar')}
+                                    </button>
+                                )}
+                                {emailValidated && (
+                                    <div style={{ color: '#48bb78', alignSelf: 'center' }}>✅</div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
                     {/* User Profile Recovery Code */}
-                    {localStorage.getItem('userId') && (
-                        <UserRecoveryCodeSection t={t} />
+                    {(user?.id || localStorage.getItem('userId')) && (
+                        <UserRecoveryCodeSection t={t} userProps={user} />
                     )}
 
                     {isInstallable && (
@@ -276,14 +390,20 @@ export function isSoundEnabled() {
 }
 
 // User Recovery Code Section Component
-function UserRecoveryCodeSection({ t }) {
-    const [user, setUser] = useState(null);
-    const [loading, setLoading] = useState(true);
+function UserRecoveryCodeSection({ t, userProps }) {
+    const [user, setUser] = useState(userProps || null);
+    const [loading, setLoading] = useState(!userProps);
     const [copied, setCopied] = useState(false);
 
     const API_URL = import.meta.env.PROD ? '' : `http://${window.location.hostname}:3001`;
 
     useEffect(() => {
+        if (userProps) {
+            setUser(userProps);
+            setLoading(false);
+            return;
+        }
+
         const userId = localStorage.getItem('userId');
         if (userId) {
             fetch(`${API_URL}/api/user/${userId}`)
@@ -296,7 +416,7 @@ function UserRecoveryCodeSection({ t }) {
         } else {
             setLoading(false);
         }
-    }, []);
+    }, [userProps]);
 
     const copyCode = () => {
         if (user?.recoveryCode) {

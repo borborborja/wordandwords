@@ -26,7 +26,10 @@ export default function Game({
     t,
     gameName = 'WordAndWords',
     uiLanguage,
-    onUiLanguageChange
+    onUiLanguageChange,
+    user,
+    onUpdateUser,
+    profilesEnabled
 }) {
     const [placedTiles, setPlacedTiles] = useState([]);
     const [selectedTileIndex, setSelectedTileIndex] = useState(null);
@@ -500,6 +503,9 @@ export default function Game({
                 t={t}
                 uiLanguage={uiLanguage}
                 onUiLanguageChange={onUiLanguageChange}
+                user={user}
+                onUpdateUser={onUpdateUser}
+                profilesEnabled={profilesEnabled}
             />
 
             <MobileChatModal

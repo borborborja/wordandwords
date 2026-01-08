@@ -42,6 +42,8 @@ export default function Lobby({
     const [emailValidating, setEmailValidating] = useState(false);
     const [emailValidated, setEmailValidated] = useState(false);
     const [loginEmail, setLoginEmail] = useState('');
+    const [loginCode, setLoginCode] = useState('');
+    const [loginType, setLoginType] = useState('email'); // 'email' or 'code'
     const [loginSent, setLoginSent] = useState(false);
     const [loginError, setLoginError] = useState(null);
     const [fallbackCode, setFallbackCode] = useState(null);
@@ -182,6 +184,17 @@ export default function Lobby({
         }
     };
 
+    // Handle recovery via profile code
+    const handleRecoverWithCode = async () => {
+        if (!loginCode.trim()) return;
+        setLoginError(null);
+        try {
+            await onRecoverUser(loginCode.trim());
+        } catch (err) {
+            setLoginError(err.message || 'Código inválido');
+        }
+    };
+
     // If user is logged in, show dashboard instead of main actions (unless in form mode)
     const showDashboard = user && !mode;
 
@@ -245,11 +258,17 @@ export default function Lobby({
                                     <p>{t('lobby.joinGameDesc')}</p>
                                 </div>
 
-                                {profilesEnabled && !user && (
-                                    <div className="lobby-card glass login-card" onClick={() => setMode('login')}>
-                                        <div className="card-icon">📧</div>
+                                {profilesEnabled ? (
+                                    <div className="lobby-card glass login-card" onClick={() => { setMode('login'); setLoginType('email'); }}>
+                                        <div className="card-icon">🔐</div>
                                         <h3>{t('lobby.haveAccount') || '¿Ya tienes cuenta?'}</h3>
-                                        <p>{t('lobby.loginDesc') || 'Accede con tu email'}</p>
+                                        <p>{t('lobby.loginDesc') || 'Accede con tu correo o código'}</p>
+                                    </div>
+                                ) : (
+                                    <div className="lobby-card glass login-card" onClick={() => { setMode('login'); setLoginType('code'); }}>
+                                        <div className="card-icon">🔑</div>
+                                        <h3>{t('lobby.haveAccount') || '¿Ya tienes cuenta?'}</h3>
+                                        <p>{t('lobby.loginWithCode') || 'Accede con tu código de perfil'}</p>
                                     </div>
                                 )}
                             </div>
@@ -269,42 +288,80 @@ export default function Lobby({
 
                                 {/* Login Mode - just email */}
                                 {mode === 'login' && (
-                                    <>
-                                        {loginSent ? (
-                                            <div className="login-success">
-                                                <div className="success-icon">✉️</div>
-                                                <h3>{t('lobby.checkEmail') || '¡Revisa tu email!'}</h3>
-                                                <p>{t('lobby.linkSent') || 'Te hemos enviado un enlace para acceder'}</p>
+                                    <div className="login-container">
+                                        {profilesEnabled && !loginSent && !fallbackCode && (
+                                            <div className="login-tabs">
                                                 <button
-                                                    className="btn-link"
-                                                    style={{ marginTop: '1rem' }}
-                                                    onClick={() => {
-                                                        setLoginSent(false);
-                                                        handleSendLoginLink();
-                                                    }}
+                                                    className={`login-tab ${loginType === 'email' ? 'active' : ''}`}
+                                                    onClick={() => setLoginType('email')}
                                                 >
-                                                    {t('lobby.resendEmail') || 'Reenviar email'}
+                                                    {t('lobby.loginWithEmail') || 'Email'}
+                                                </button>
+                                                <button
+                                                    className={`login-tab ${loginType === 'code' ? 'active' : ''}`}
+                                                    onClick={() => setLoginType('code')}
+                                                >
+                                                    {t('lobby.loginWithCode') || 'Código'}
                                                 </button>
                                             </div>
-                                        ) : fallbackCode ? (
-                                            <div className="fallback-code-display">
-                                                <p>{t('lobby.smtpNotConfigured') || 'Email no disponible. Usa este código:'}</p>
-                                                <div className="code-box">{fallbackCode}</div>
-                                            </div>
+                                        )}
+
+                                        {loginType === 'email' ? (
+                                            <>
+                                                {loginSent ? (
+                                                    <div className="login-success">
+                                                        <div className="success-icon">✉️</div>
+                                                        <h3>{t('lobby.checkEmail') || '¡Revisa tu email!'}</h3>
+                                                        <p>{t('lobby.linkSent') || 'Te hemos enviado un enlace para acceder'}</p>
+                                                        <button
+                                                            className="btn-link"
+                                                            style={{ marginTop: '1rem' }}
+                                                            onClick={() => {
+                                                                setLoginSent(false);
+                                                                handleSendLoginLink();
+                                                            }}
+                                                        >
+                                                            {t('lobby.resendEmail') || 'Reenviar email'}
+                                                        </button>
+                                                    </div>
+                                                ) : fallbackCode ? (
+                                                    <div className="fallback-code-display">
+                                                        <p>{t('lobby.smtpNotConfigured') || 'Email no disponible. Usa este código:'}</p>
+                                                        <div className="code-box">{fallbackCode}</div>
+                                                    </div>
+                                                ) : (
+                                                    <div className="form-group">
+                                                        <label className="label">{t('lobby.enterEmail') || 'Tu email'}</label>
+                                                        <input
+                                                            type="email"
+                                                            className="input"
+                                                            value={loginEmail}
+                                                            onChange={(e) => setLoginEmail(e.target.value)}
+                                                            placeholder="tu@email.com"
+                                                        />
+                                                        {loginError && <div className="error-message">{loginError}</div>}
+                                                    </div>
+                                                )}
+                                            </>
                                         ) : (
                                             <div className="form-group">
-                                                <label className="label">{t('lobby.enterEmail') || 'Tu email'}</label>
+                                                <label className="label">{t('lobby.enterRecoveryCode') || 'Tu código de perfil'}</label>
                                                 <input
-                                                    type="email"
-                                                    className="input"
-                                                    value={loginEmail}
-                                                    onChange={(e) => setLoginEmail(e.target.value)}
-                                                    placeholder="tu@email.com"
+                                                    type="text"
+                                                    className="input code-input"
+                                                    value={loginCode}
+                                                    onChange={(e) => setLoginCode(e.target.value.toUpperCase())}
+                                                    placeholder="XXXXXX"
+                                                    maxLength={6}
+                                                    autoComplete="off"
                                                 />
                                                 {loginError && <div className="error-message">{loginError}</div>}
+                                                <p className="hint">
+                                                    {t('dashboard.recoveryHint') || 'El código de 6 letras de tu perfil'}
+                                                </p>
                                             </div>
                                         )}
-                                    </>
+                                    </div>
                                 )}
 
                                 {/* Create/Join Modes - name + optional email (only if not logged in) */}
@@ -497,12 +554,13 @@ export default function Lobby({
                                 {!(mode === 'login' && loginSent) && (
                                     <button
                                         className="btn btn-primary w-full"
-                                        onClick={mode === 'create' ? handleCreate : mode === 'join' ? handleJoin : handleSendLoginLink}
+                                        onClick={mode === 'create' ? handleCreate : mode === 'join' ? handleJoin : (loginType === 'email' ? handleSendLoginLink : handleRecoverWithCode)}
                                         disabled={
                                             loading ||
                                             (mode === 'create' && !(user?.name || localName.trim())) ||
                                             (mode === 'join' && (!(user?.name || localName.trim()) || !gameCode.trim())) ||
-                                            (mode === 'login' && !loginEmail.trim()) ||
+                                            (mode === 'login' && loginType === 'email' && !loginEmail.trim()) ||
+                                            (mode === 'login' && loginType === 'code' && loginCode.length < 6) ||
                                             // Block if email entered but not validated
                                             (!user && localEmail.trim() && !emailValidated)
                                         }

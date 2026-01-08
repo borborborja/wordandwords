@@ -30,8 +30,10 @@
         "enterEmail": "Email",
         "emailHint": "Para acceder desde otros dispositivos",
         "haveAccount": "¿Ya tienes cuenta?",
-        "loginDesc": "Accede con tu email",
+        "loginDesc": "Accede con tu email o código",
         "login": "Acceder",
+        "loginWithEmail": "Usar Email",
+        "loginWithCode": "Usar Código",
         "sendLink": "Enviar enlace",
         "checkEmail": "¡Revisa tu email!",
         "linkSent": "Te hemos enviado un enlace para acceder",
@@ -93,7 +95,12 @@
         "recoveryDesc": "Enlace para entrar desde otro dispositivo",
         "linkCopied": "Enlace copiado al portapapeles",
         "noGame": "No tienes una partida activa para recuperar",
-        "copyLink": "Copiar Enlace"
+        "copyLink": "Copiar Enlace",
+        "profileCode": "Código de Perfil",
+        "profileCodeDesc": "Usa este código para acceder desde otro dispositivo",
+        "linkEmail": "Vincular Email",
+        "linkEmailDesc": "Añade un email para recuperar tu cuenta fácilmente",
+        "enterEmailToLink": "Email para vincular"
     },
     "sidebar": {
         "chat": "Chat",

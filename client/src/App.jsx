@@ -297,6 +297,8 @@ export default function App() {
                     onRecoverUser={recoverUserProfile}
                     onLogout={logoutUser}
                     onRefreshUser={refreshUser}
+                    onUpdateUser={updateUserProfile}
+                    profilesEnabled={profilesEnabled}
                     onOpenAdmin={() => setShowAdmin(true)}
                 />
             );

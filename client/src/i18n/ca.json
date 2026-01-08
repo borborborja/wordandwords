@@ -30,8 +30,10 @@
         "enterEmail": "Email",
         "emailHint": "Per accedir des d'altres dispositius",
         "haveAccount": "Ja tens compte?",
-        "loginDesc": "Accedeix amb el teu email",
+        "loginDesc": "Accedeix amb el teu email o codi",
         "login": "Accedir",
+        "loginWithEmail": "Usar Email",
+        "loginWithCode": "Usar Codi",
         "sendLink": "Enviar enllaç",
         "checkEmail": "Revisa el teu email!",
         "linkSent": "T'hem enviat un enllaç per accedir",
@@ -93,7 +95,12 @@
         "recoveryDesc": "Enllaç per entrar des d'un altre dispositiu",
         "linkCopied": "Enllaç copiat al porta-retalls",
         "noGame": "No tens cap partida activa per recuperar",
-        "copyLink": "Copiar Enllaç"
+        "copyLink": "Copiar Enllaç",
+        "profileCode": "Codi de Perfil",
+        "profileCodeDesc": "Usa aquest codi per accedir des d'un altre dispositiu",
+        "linkEmail": "Vincular Email",
+        "linkEmailDesc": "Afegeix un email per recuperar el teu compte fàcilment",
+        "enterEmailToLink": "Email per vincular"
     },
     "sidebar": {
         "chat": "Xat",
