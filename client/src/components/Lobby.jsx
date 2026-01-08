@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { usePWAInstall } from '../hooks/usePWAInstall';
 import UserDashboard from './UserDashboard';
 import './Lobby.css';
@@ -47,6 +47,14 @@ export default function Lobby({
     const [fallbackCode, setFallbackCode] = useState(null);
 
     const API_URL = import.meta.env.PROD ? '' : `http://${window.location.hostname}:3001`;
+
+    // Sync local state with user prop when it changes
+    useEffect(() => {
+        if (user) {
+            if (user.name) setLocalName(user.name);
+            if (user.email) setLocalEmail(user.email);
+        }
+    }, [user]);
 
     // Handle email validation - send verification link and poll
     const handleValidateEmail = async () => {
@@ -297,8 +305,8 @@ export default function Lobby({
                                     </>
                                 )}
 
-                                {/* Create/Join Modes - name + optional email */}
-                                {(mode === 'create' || mode === 'join') && (
+                                {/* Create/Join Modes - name + optional email (only if not logged in) */}
+                                {(mode === 'create' || mode === 'join') && !user && (
                                     <>
                                         <div className="form-group">
                                             <label className="label">{t('lobby.enterName')}</label>
