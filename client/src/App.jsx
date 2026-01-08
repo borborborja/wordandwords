@@ -204,37 +204,50 @@ export default function App() {
 
     // Try to rejoin game on mount and on reconnection
     useEffect(() => {
-        if (socket.connected) {
-            gameState.rejoinGame();
-        }
+        const attemptRejoin = async () => {
+            if (socket.connected) {
+                const success = await gameState.rejoinGame(user?.id);
+                if (success && user) {
+                    refreshUser();
+                }
+            }
+        };
+
+        attemptRejoin();
 
         // Also rejoin when socket reconnects after a disconnect
         const unsubReconnect = socket.onReconnect?.(() => {
             console.log('Socket reconnected - attempting to rejoin game');
-            gameState.rejoinGame();
+            attemptRejoin();
         });
 
         return () => {
             unsubReconnect?.();
         };
-    }, [socket.connected, socket.onReconnect]);
+    }, [socket.connected, socket.onReconnect, user?.id, refreshUser]);
 
     // Sync game state when tab/app becomes visible again (critical for mobile/async games)
     useEffect(() => {
-        const handleVisibilityChange = () => {
+        const handleVisibilityChange = async () => {
             if (document.visibilityState === 'visible' && socket.connected) {
                 console.log('Tab became visible - syncing game state');
-                gameState.rejoinGame();
+                const success = await gameState.rejoinGame(user?.id);
+                if (success && user) {
+                    refreshUser();
+                }
             }
         };
 
         document.addEventListener('visibilitychange', handleVisibilityChange);
 
         // Also handle when window regains focus (desktop browsers)
-        const handleFocus = () => {
+        const handleFocus = async () => {
             if (socket.connected && localStorage.getItem('gameId')) {
                 console.log('Window focused - syncing game state');
-                gameState.rejoinGame();
+                const success = await gameState.rejoinGame(user?.id);
+                if (success && user) {
+                    refreshUser();
+                }
             }
         };
 
@@ -244,7 +257,7 @@ export default function App() {
             document.removeEventListener('visibilitychange', handleVisibilityChange);
             window.removeEventListener('focus', handleFocus);
         };
-    }, [socket.connected, gameState.rejoinGame]);
+    }, [socket.connected, gameState.rejoinGame, user?.id, refreshUser]);
 
     // Connection status indicator
     const ConnectionStatus = () => (
@@ -308,8 +321,8 @@ export default function App() {
         // Lobby (no game)
         return (
             <Lobby
-                onCreateGame={gameState.createGame}
-                onJoinGame={gameState.joinGame}
+                onCreateGame={(lang, name, opts) => gameState.createGame(lang, name, opts, user?.id)}
+                onJoinGame={(gameId, name) => gameState.joinGame(gameId, name, user?.id)}
                 loading={gameState.loading}
                 error={gameState.error}
                 t={t}

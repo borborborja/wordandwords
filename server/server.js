@@ -1275,7 +1275,7 @@ io.on('connection', (socket) => {
     // Rejoin game
     socket.on('rejoinGame', (data, callback) => {
         try {
-            const { gameId, playerId } = data || {};
+            const { gameId, playerId, userId } = data || {};
 
             if (!gameId || !playerId) {
                 return safeCallback(callback, { success: false, error: 'Game ID and player ID required' });
@@ -1289,6 +1289,12 @@ io.on('connection', (socket) => {
             const player = game.players.find(p => p.id === playerId);
             if (!player) {
                 return safeCallback(callback, { success: false, error: 'Player not in game' });
+            }
+
+            // Link userId if provided and not already linked
+            if (userId) {
+                player.userId = userId;
+                addGameToUser(userId, gameId);
             }
 
             currentPlayerId = playerId;
@@ -1306,7 +1312,7 @@ io.on('connection', (socket) => {
             // Notify others
             io.to(gameId).emit('playerReconnected', { playerId });
 
-            console.log(`Player ${playerId} rejoined game ${gameId}`);
+            console.log(`Player ${playerId}${userId ? ` [user: ${userId}]` : ''} rejoined game ${gameId}`);
         } catch (error) {
             console.error('Rejoin game error:', error);
             safeCallback(callback, { success: false, error: error.message });

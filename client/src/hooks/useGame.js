@@ -78,7 +78,7 @@ export function useGame(socket) {
         };
     }, [socket]);
 
-    const createGame = useCallback(async (language, name, options = {}) => {
+    const createGame = useCallback(async (language, name, options = {}, userId = null) => {
         setLoading(true);
         setError(null);
 
@@ -92,7 +92,8 @@ export function useGame(socket) {
                 timeLimit,
                 enableChat,
                 enableHistory,
-                qAsQu
+                qAsQu,
+                userId
             });
             setGame(response.game);
             setPlayerId(response.game.players[0].id);
@@ -109,12 +110,12 @@ export function useGame(socket) {
         }
     }, [socket]);
 
-    const joinGame = useCallback(async (gameId, name) => {
+    const joinGame = useCallback(async (gameId, name, userId = null) => {
         setLoading(true);
         setError(null);
 
         try {
-            const response = await socket.emit('joinGame', { gameId, playerName: name });
+            const response = await socket.emit('joinGame', { gameId, playerName: name, userId });
             setGame(response.game);
             const player = response.game.players.find(p => p.name === name);
             if (player) {
@@ -197,7 +198,7 @@ export function useGame(socket) {
         });
     }, [socket]);
 
-    const rejoinGame = useCallback(async () => {
+    const rejoinGame = useCallback(async (userId = null) => {
         const savedGameId = localStorage.getItem('gameId');
         const savedPlayerId = localStorage.getItem('playerId');
 
@@ -206,7 +207,8 @@ export function useGame(socket) {
         try {
             const response = await socket.emit('rejoinGame', {
                 gameId: savedGameId,
-                playerId: savedPlayerId
+                playerId: savedPlayerId,
+                userId
             });
             setGame(response.game);
             setPlayerId(savedPlayerId);
