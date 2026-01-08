@@ -205,6 +205,11 @@ export default function Settings({ isOpen, onClose, t, uiLanguage, onUiLanguageC
                         </button>
                     </div>
 
+                    {/* User Profile Recovery Code */}
+                    {localStorage.getItem('userId') && (
+                        <UserRecoveryCodeSection t={t} />
+                    )}
+
                     {isInstallable && (
                         <div className="settings-item">
                             <div className="settings-item-info">
@@ -268,4 +273,63 @@ export function sendTurnNotification(gameName = 'WordAndWords') {
 export function isSoundEnabled() {
     const saved = localStorage.getItem('soundEnabled');
     return saved !== null ? saved === 'true' : true;
+}
+
+// User Recovery Code Section Component
+function UserRecoveryCodeSection({ t }) {
+    const [user, setUser] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [copied, setCopied] = useState(false);
+
+    const API_URL = import.meta.env.PROD ? '' : `http://${window.location.hostname}:3001`;
+
+    useEffect(() => {
+        const userId = localStorage.getItem('userId');
+        if (userId) {
+            fetch(`${API_URL}/api/user/${userId}`)
+                .then(res => res.ok ? res.json() : null)
+                .then(data => {
+                    setUser(data);
+                    setLoading(false);
+                })
+                .catch(() => setLoading(false));
+        } else {
+            setLoading(false);
+        }
+    }, []);
+
+    const copyCode = () => {
+        if (user?.recoveryCode) {
+            navigator.clipboard.writeText(user.recoveryCode);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        }
+    };
+
+    if (loading || !user?.recoveryCode) return null;
+
+    return (
+        <div className="settings-item recovery-code-section">
+            <div className="settings-item-info">
+                <span className="settings-item-icon">🔐</span>
+                <div className="settings-item-text">
+                    <span className="settings-item-label">
+                        {t('settings.profileCode') || 'Código de Perfil'}
+                    </span>
+                    <span className="settings-item-desc">
+                        {t('settings.profileCodeDesc') || 'Usa este código para acceder desde otro dispositivo'}
+                    </span>
+                </div>
+            </div>
+            <div className="recovery-code-display">
+                <span className="recovery-code-value">{user.recoveryCode}</span>
+                <button
+                    className="copy-code-btn"
+                    onClick={copyCode}
+                >
+                    {copied ? '✅' : '📋'}
+                </button>
+            </div>
+        </div>
+    );
 }

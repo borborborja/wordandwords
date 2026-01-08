@@ -185,3 +185,42 @@
     border-color: var(--accent-light);
     box-shadow: 0 0 10px rgba(102, 126, 234, 0.4);
 }
+
+/* Recovery Code Display */
+.recovery-code-section {
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.15), rgba(118, 75, 162, 0.15));
+    border: 1px solid rgba(102, 126, 234, 0.3);
+    border-radius: var(--radius-md);
+    padding: var(--space-md) !important;
+}
+
+.recovery-code-display {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: var(--radius-md);
+    padding: var(--space-sm) var(--space-md);
+}
+
+.recovery-code-value {
+    font-family: var(--font-mono);
+    font-size: 1.5rem;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    color: var(--accent-primary);
+}
+
+.copy-code-btn {
+    background: none;
+    border: none;
+    font-size: 1.2rem;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: var(--radius-sm);
+    transition: background 0.2s;
+}
+
+.copy-code-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+}

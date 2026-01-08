@@ -3,7 +3,9 @@
         "title": "WordAndWords",
         "subtitle": "Joc de Paraules Multijugador",
         "createGame": "Crear Partida",
+        "createGameDesc": "Crea una nova partida i convida els teus amics",
         "joinGame": "Unir-se",
+        "joinGameDesc": "Uneix-te a una partida existent amb un codi",
         "enterName": "El teu nom",
         "enterCode": "Codi de partida",
         "selectLanguage": "Selecciona l'idioma",
@@ -18,7 +20,34 @@
         "enableChat": "Activar Xat",
         "enableHistory": "Activar Historial",
         "timeLimit": "Límit de temps",
-        "timeInfinite": "Infinit"
+        "timeInfinite": "Infinit",
+        "showTileBagCount": "Mostrar fitxes restants",
+        "showTileBagBreakdown": "Desglossament per lletra",
+        "recoverProfile": "Recuperar Perfil",
+        "recoverProfileDesc": "Ja tens un codi de recuperació?",
+        "enterRecoveryCode": "Codi de recuperació",
+        "recover": "Recuperar",
+        "enterEmail": "Email",
+        "emailHint": "Per accedir des d'altres dispositius",
+        "haveAccount": "Ja tens compte?",
+        "loginDesc": "Accedeix amb el teu email",
+        "login": "Accedir",
+        "sendLink": "Enviar enllaç",
+        "checkEmail": "Revisa el teu email!",
+        "linkSent": "T'hem enviat un enllaç per accedir",
+        "smtpNotConfigured": "Email no disponible. Usa aquest codi:",
+        "validateEmail": "Validar"
+    },
+    "common": {
+        "optional": "opcional",
+        "back": "Tornar"
+    },
+    "dashboard": {
+        "myGames": "Les Meves Partides",
+        "noGames": "No tens partides actives",
+        "waitingTurn": "Esperant...",
+        "recoveryHint": "Guarda aquest codi per recuperar el teu perfil des d'un altre dispositiu",
+        "logout": "Tancar Sessió"
     },
     "game": {
         "yourTurn": "El teu torn",
@@ -39,7 +68,8 @@
         "playAgain": "Tornar a Jugar",
         "leave": "Sortir",
         "zoomIn": "Apropar",
-        "zoomOut": "Allunyar"
+        "zoomOut": "Allunyar",
+        "tilesRemaining": "fitxes"
     },
     "board": {
         "TW": "TP",

@@ -6,31 +6,50 @@ import { v4 as uuidv4 } from 'uuid';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
-
-import { initializeDictionaries, reloadDictionary, getDictionaryWords } from './game/validator.js';
+import webpush from 'web-push';
 import {
+    BOARD_LAYOUT,
     createGame,
     addPlayer,
     startGame,
     makeMove,
     passTurn,
     exchangeTiles,
-    getGameStateForPlayer,
-    BOARD_LAYOUT
+    getGameStateForPlayer
 } from './game/engine.js';
 import {
-    createPlayer,
-    saveGame,
-    getActiveGames,
-    getArchivedGames,
-    archiveGame,
-    updateGameTitle,
-    deleteGame,
-    getGame,
-    cleanupOldGames
-} from './db/database.js';
+    createUser,
+    getUser,
+    getUserByRecoveryCode,
+    getUserByEmail,
+    addGameToUser,
+    removeGameFromUser,
+    getUserGames,
+    updateUser as updateUserProfile,
+    generateMagicToken,
+    verifyMagicToken,
+    createVerificationToken,
+    verifyEmailToken,
+    isEmailVerified,
+    getAllUsers
+} from './users.js';
+
+// Web Push Configuration
+const publicVapidKey = process.env.VITE_VAPID_PUBLIC_KEY || 'BO6d-kaZ3rbflknBQKNGcUAz84HHZRKunuPhE0-gendQd_zovyZ3lO10LUxSq2jjQph5rJCVy_vmifSCCeki58s';
+const privateVapidKey = process.env.VAPID_PRIVATE_KEY || 'NYYs4gXRp5o3u30FCcfuIPXehFALezHsbLpN35jgHUE';
+// NOTE: Ideally these should be loaded strictly from ENV in production.
+// Using defaults here for immediate testing without restart if .env isn't reloaded.
+
+webpush.setVapidDetails(
+    process.env.VAPID_SUBJECT || 'mailto:admin@wordandwords.com',
+    publicVapidKey,
+    privateVapidKey
+);
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+// In-memory subscription storage: Map<playerId, SubscriptionObject>
+const pushSubscriptions = new Map();
 
 // Configuration from environment variables
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
@@ -58,12 +77,26 @@ const games = new Map();
 
 // Player to socket mapping
 const playerSockets = new Map();
+// Global player registry (optional, for tracking names)
+const players = new Map();
+
+function createPlayer(id, name) {
+    if (!players.has(id)) {
+        players.set(id, { id, name, createdAt: Date.now() });
+    } else {
+        // Update name if changed
+        const p = players.get(id);
+        p.name = name;
+        p.lastSeen = Date.now();
+    }
+}
 
 // Load games from database on startup
 async function loadGames() {
     const activeGames = getActiveGames();
     for (const game of activeGames) {
         games.set(game.id, game);
+
     }
     console.log(`Loaded ${games.size} active games from database`);
 }
@@ -77,7 +110,10 @@ app.get('/api/health', (req, res) => {
 });
 
 app.get('/api/config', (req, res) => {
-    res.json({ gameName: serverConfig.gameName || GAME_NAME });
+    res.json({
+        gameName: serverConfig.gameName || GAME_NAME,
+        enableProfiles: serverConfig.enableProfiles !== false
+    });
 });
 
 app.get('/api/board-layout', (req, res) => {
@@ -94,6 +130,353 @@ app.get('/api/games', (req, res) => {
             createdAt: g.createdAt
         }));
     res.json(waitingGames);
+});
+
+// =====================
+// User Profile Endpoints
+// =====================
+
+// Create new user profile
+app.post('/api/user/create', (req, res) => {
+    const { name, email } = req.body;
+
+    if (!name || !name.trim()) {
+        return res.status(400).json({ error: 'Name is required' });
+    }
+
+    // Check if email already in use
+    if (email && getUserByEmail(email)) {
+        return res.status(409).json({ error: 'Email already in use' });
+    }
+
+    const user = createUser(name, email);
+    res.status(201).json({
+        success: true,
+        user: {
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            recoveryCode: user.recoveryCode,
+            activeGames: user.activeGames
+        }
+    });
+});
+
+// Helper to check if SMTP is configured (Env or Config)
+function isSmtpAvailable() {
+    return !!(
+        (process.env.SMTP_HOST && process.env.SMTP_USER) ||
+        (serverConfig.smtp && serverConfig.smtp.host && serverConfig.smtp.user)
+    );
+}
+
+// Helper to get SMTP transporter
+async function getTransporter() {
+    const nodemailer = await import('nodemailer');
+
+    // Prefer env vars
+    if (process.env.SMTP_HOST) {
+        return nodemailer.default.createTransport({
+            host: process.env.SMTP_HOST,
+            port: parseInt(process.env.SMTP_PORT || '587'),
+            secure: process.env.SMTP_PORT === '465',
+            auth: {
+                user: process.env.SMTP_USER,
+                pass: process.env.SMTP_PASS
+            }
+        });
+    }
+
+    // Fallback to configured settings
+    const { host, port, user, pass } = serverConfig.smtp || {};
+    return nodemailer.default.createTransport({
+        host,
+        port: parseInt(port || '587'),
+        secure: port === '465',
+        auth: { user, pass }
+    });
+}
+
+// Get user by ID
+app.get('/api/user/:userId', (req, res) => {
+    const user = getUser(req.params.userId);
+
+    if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Get game details for each active game
+    const gameDetails = user.activeGames.map(gameId => {
+        const game = games.get(gameId) || getGame(gameId);
+        if (!game) return null;
+        return {
+            id: game.id,
+            status: game.status,
+            language: game.language,
+            players: game.players.map(p => ({ name: p.name, score: p.score })),
+            currentPlayerIndex: game.currentPlayerIndex,
+            isMyTurn: game.players[game.currentPlayerIndex]?.id === req.params.userId
+        };
+    }).filter(Boolean);
+
+    res.json({
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        recoveryCode: user.recoveryCode,
+        activeGames: gameDetails
+    });
+});
+
+// Recover profile by code
+app.post('/api/user/recover', (req, res) => {
+    const { code, email } = req.body;
+
+    let user = null;
+
+    if (code) {
+        user = getUserByRecoveryCode(code);
+    } else if (email) {
+        user = getUserByEmail(email);
+    }
+
+    if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.json({
+        success: true,
+        user: {
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            recoveryCode: user.recoveryCode,
+            activeGames: user.activeGames
+        }
+    });
+});
+
+// Update user profile
+app.put('/api/user/:userId', (req, res) => {
+    const { name, email } = req.body;
+    const user = getUser(req.params.userId);
+
+    if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Check if new email is already in use by another user
+    if (email && email !== user.email) {
+        const existing = getUserByEmail(email);
+        if (existing && existing.id !== user.id) {
+            return res.status(409).json({ error: 'Email already in use' });
+        }
+    }
+
+    const updated = updateUserProfile(req.params.userId, { name, email });
+    res.json({ success: true, user: updated });
+});
+
+// Send magic link to email (for login from another device)
+app.post('/api/user/send-link', async (req, res) => {
+    const { email } = req.body;
+
+    if (!email) {
+        return res.status(400).json({ error: 'Email required' });
+    }
+
+    const user = getUserByEmail(email);
+    if (!user) {
+        // Return 404 so frontend can show helpful message
+        return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Check if SMTP is configured
+    if (!isSmtpAvailable()) {
+        return res.status(400).json({
+            error: 'Email not configured on server',
+            fallbackCode: user.recoveryCode // Provide code as fallback
+        });
+    }
+
+    // Generate magic token
+    const token = generateMagicToken(user.id);
+    const baseUrl = serverConfig.serverUrl || `http://localhost:${process.env.PORT || 3001}`;
+    const magicLink = `${baseUrl}/?auth_token=${token}`;
+
+    try {
+        const transporter = await getTransporter();
+
+        await transporter.sendMail({
+            from: process.env.SMTP_FROM || process.env.SMTP_USER || serverConfig.smtp?.user,
+            to: email,
+            subject: `[${serverConfig.gameName}] Tu enlace de acceso`,
+            text: `Hola ${user.name}!\n\nHaz click en este enlace para acceder a tus partidas:\n\n${magicLink}\n\nEste enlace expira en 24 horas.`,
+            html: `
+                <h2>¡Hola ${user.name}!</h2>
+                <p>Haz click en el botón para acceder a tus partidas:</p>
+                <a href="${magicLink}" style="display:inline-block;background:#667eea;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;">
+                    Entrar a ${serverConfig.gameName}
+                </a>
+                <p style="color:#666;font-size:12px;margin-top:20px;">Este enlace expira en 24 horas.</p>
+            `
+        });
+
+        res.json({ success: true, message: 'Link sent' });
+    } catch (err) {
+        console.error('Error sending magic link:', err);
+        res.status(500).json({ error: 'Failed to send email', fallbackCode: user.recoveryCode });
+    }
+});
+
+// Verify magic link token
+app.get('/api/auth/verify', (req, res) => {
+    const { token } = req.query;
+
+    if (!token) {
+        return res.status(400).json({ error: 'Token required' });
+    }
+
+    const user = verifyMagicToken(token);
+
+    if (!user) {
+        return res.status(401).json({ error: 'Invalid or expired token' });
+    }
+
+    res.json({
+        success: true,
+        user: {
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            recoveryCode: user.recoveryCode,
+            activeGames: user.activeGames
+        }
+    });
+});
+
+// ADMIN USER MANAGEMENT
+// Get all users
+app.get('/api/admin/users', (req, res) => {
+    // Ideally add admin auth check here
+    const users = getAllUsers();
+
+    // Map to include relevant info
+    const userList = users.map(u => ({
+        id: u.id,
+        name: u.name,
+        email: u.email,
+        recoveryCode: u.recoveryCode,
+        createdAt: u.createdAt,
+        lastSeen: u.lastSeen,
+        gamesCount: u.activeGames?.length || 0
+    })).sort((a, b) => b.lastSeen - a.lastSeen); // Sort by most recently active
+
+    res.json(userList);
+});
+
+// Update user details (Admin)
+app.put('/api/admin/users/:userId', (req, res) => {
+    const { name, email } = req.body;
+    const user = getUser(req.params.userId);
+
+    if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Check if new email in use (if changed)
+    if (email && email !== user.email) {
+        const existing = getUserByEmail(email);
+        if (existing && existing.id !== user.id) {
+            return res.status(409).json({ error: 'Email already in use' });
+        }
+    }
+
+    const updated = updateUserProfile(req.params.userId, { name, email });
+    res.json({ success: true, user: updated });
+});
+
+
+// START VERIFICATION API
+// Init verification for new/unknown emails
+app.post('/api/auth/init-verification', async (req, res) => {
+    const { email } = req.body;
+
+    if (!email) return res.status(400).json({ error: 'Email required' });
+
+    if (!isSmtpAvailable()) {
+        return res.status(503).json({ error: 'Email system not configured' });
+    }
+
+    const token = createVerificationToken(email.trim().toLowerCase());
+    const baseUrl = serverConfig.serverUrl || `http://localhost:${process.env.PORT || 3001}`;
+    const verifyLink = `${baseUrl}/api/auth/verify-email?token=${token}`;
+
+    try {
+        const transporter = await getTransporter();
+
+        await transporter.sendMail({
+            from: process.env.SMTP_FROM || process.env.SMTP_USER || serverConfig.smtp?.user,
+            to: email,
+            subject: `[${serverConfig.gameName}] Valida tu email`,
+            html: `
+                <h2>Valida tu email</h2>
+                <p>Para continuar en ${serverConfig.gameName}, haz click en el enlace:</p>
+                <a href="${verifyLink}" style="display:inline-block;background:#48bb78;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;">
+                    Validar Email
+                </a>
+                <p style="color:#666;font-size:12px;margin-top:20px;">Si no has solicitado esto, ignora este email.</p>
+            `
+        });
+
+        res.json({ success: true, message: 'Verification link sent' });
+    } catch (err) {
+        console.error('Error sending verification:', err);
+        res.status(500).json({ error: 'Failed to send email' });
+    }
+});
+
+// Verify email link (clicked by user)
+app.get('/api/auth/verify-email', (req, res) => {
+    const { token } = req.query;
+    if (!token) return res.status(400).send('Token missing');
+
+    const email = verifyEmailToken(token);
+
+    if (email) {
+        res.send(`
+            <div style="font-family:sans-serif;text-align:center;padding:50px;">
+                <h1 style="color:#48bb78;font-size:48px;">✅</h1>
+                <h2>Email Validado!</h2>
+                <p>Puedes cerrar esta ventana y volver al juego.</p>
+                <script>window.close()</script>
+            </div>
+        `);
+    } else {
+        res.status(400).send(`
+            <div style="font-family:sans-serif;text-align:center;padding:50px;">
+                <h1 style="color:#f56565;font-size:48px;">❌</h1>
+                <h2>Link expirado o inválido</h2>
+            </div>
+        `);
+    }
+});
+
+// Check status (polling)
+app.get('/api/auth/check-status', (req, res) => {
+    const { email } = req.query;
+    if (!email) return res.json({ verified: false });
+
+    const verified = isEmailVerified(email.trim().toLowerCase());
+    res.json({ verified });
+});
+
+// Check if SMTP is available (for frontend to know)
+app.get('/api/config/smtp-status', (req, res) => {
+    res.json({
+        smtpConfigured: isSmtpAvailable(),
+        profilesEnabled: serverConfig.enableProfiles !== false
+    });
 });
 
 app.get('/api/games/:id', (req, res) => {
@@ -116,9 +499,28 @@ app.get('/api/games/:id', (req, res) => {
 
 // Configuration Management
 const CONFIG_FILE = path.join(__dirname, 'config.json');
+
+// SMTP config from environment (read-only if set)
+const SMTP_ENV = {
+    host: process.env.SMTP_HOST || '',
+    port: process.env.SMTP_PORT || '587',
+    user: process.env.SMTP_USER || '',
+    pass: process.env.SMTP_PASS ? '********' : '', // Masked
+    from: process.env.SMTP_FROM || '',
+    isEnvConfigured: !!(process.env.SMTP_HOST && process.env.SMTP_USER)
+};
+
 let serverConfig = {
     gameName: process.env.GAME_NAME || 'WordAndWords',
     serverUrl: '', // To be set by admin
+    enableProfiles: true, // Enable persistent user profiles
+    smtp: {
+        host: '',
+        port: '587',
+        user: '',
+        pass: '',
+        from: ''
+    }
 };
 
 // Load config
@@ -155,6 +557,8 @@ function adminAuth(req, res, next) {
     next();
 }
 
+
+
 // Admin login (verify password)
 app.post('/api/admin/login', (req, res) => {
     const { password } = req.body;
@@ -165,19 +569,80 @@ app.post('/api/admin/login', (req, res) => {
     }
 });
 
+
+
 // GET Config
 app.get('/api/admin/config', adminAuth, (req, res) => {
-    res.json(serverConfig);
+    res.json({
+        ...serverConfig,
+        smtpEnv: SMTP_ENV // Include env-based SMTP config (read-only info)
+    });
 });
 
 // UPDATE Config
 app.put('/api/admin/config', adminAuth, (req, res) => {
-    const { gameName, serverUrl } = req.body;
+    const { gameName, serverUrl, enableProfiles, smtp } = req.body;
     if (gameName) serverConfig.gameName = gameName;
     if (serverUrl !== undefined) serverConfig.serverUrl = serverUrl;
+    if (enableProfiles !== undefined) serverConfig.enableProfiles = enableProfiles;
+
+    // Only update SMTP if not configured via env
+    if (smtp && !SMTP_ENV.isEnvConfigured) {
+        serverConfig.smtp = { ...serverConfig.smtp, ...smtp };
+    }
 
     saveConfig();
     res.json({ success: true, config: serverConfig });
+});
+
+// Test SMTP configuration
+app.post('/api/admin/smtp/test', adminAuth, async (req, res) => {
+    const { to } = req.body;
+
+    if (!to) {
+        return res.status(400).json({ error: 'Destination email required' });
+    }
+
+    // Get SMTP config (prefer env, fallback to serverConfig)
+    const smtpConfig = SMTP_ENV.isEnvConfigured ? {
+        host: process.env.SMTP_HOST,
+        port: parseInt(process.env.SMTP_PORT || '587'),
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS,
+        from: process.env.SMTP_FROM
+    } : serverConfig.smtp;
+
+    if (!smtpConfig.host || !smtpConfig.user) {
+        return res.status(400).json({ error: 'SMTP not configured' });
+    }
+
+    try {
+        // Dynamic import nodemailer (only if needed)
+        const nodemailer = await import('nodemailer');
+
+        const transporter = nodemailer.default.createTransport({
+            host: smtpConfig.host,
+            port: parseInt(smtpConfig.port || '587'),
+            secure: smtpConfig.port === '465',
+            auth: {
+                user: smtpConfig.user,
+                pass: smtpConfig.pass
+            }
+        });
+
+        await transporter.sendMail({
+            from: smtpConfig.from || smtpConfig.user,
+            to: to,
+            subject: `[${serverConfig.gameName}] Test Email`,
+            text: 'Este es un email de prueba. Si lo recibes, la configuración SMTP es correcta.',
+            html: `<h2>✅ Configuración SMTP Correcta</h2><p>Este es un email de prueba de <strong>${serverConfig.gameName}</strong>.</p>`
+        });
+
+        res.json({ success: true });
+    } catch (err) {
+        console.error('SMTP test error:', err);
+        res.status(500).json({ success: false, error: err.message });
+    }
 });
 
 // Get dictionary for a language
@@ -222,24 +687,10 @@ app.post('/api/admin/dictionary/:lang/add', adminAuth, (req, res) => {
         return res.status(400).json({ error: 'Words must be an array' });
     }
 
-    const dictPath = path.join(__dirname, 'dictionaries', `${lang}.txt`);
-
+    // Add words to dictionary
     try {
-        // Get existing words
-        const existing = getDictionaryWords(lang);
-        const existingSet = new Set(existing);
-
-        // Add new words
-        const newWords = words.map(w => w.trim().toUpperCase()).filter(w => w && !existingSet.has(w));
-        const allWords = [...existing, ...newWords];
-
-        // Write to file
-        fs.writeFileSync(dictPath, allWords.join('\n'), 'utf-8');
-
-        // Reload
-        reloadDictionary(lang);
-
-        res.json({ success: true, added: newWords.length, total: allWords.length });
+        const result = addWordsToDictionary(lang, words);
+        res.json({ success: true, ...result });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
@@ -406,10 +857,38 @@ app.put('/api/admin/archived-games/:gameId', adminAuth, (req, res) => {
 // Delete archived game
 app.delete('/api/admin/archived-games/:gameId', adminAuth, (req, res) => {
     const { gameId } = req.params;
-
     const deleted = deleteGame(gameId);
 
     res.json({ success: deleted, gameId });
+});
+
+// Export game backup
+app.get('/api/admin/games/:gameId/export', adminAuth, (req, res) => {
+    const { gameId } = req.params;
+    let game = games.get(gameId);
+    if (!game) game = getGame(gameId);
+
+    if (!game) {
+        return res.status(404).json({ error: 'Game not found' });
+    }
+
+    res.json(game);
+});
+
+// Import game backup
+app.post('/api/admin/games/import', adminAuth, (req, res) => {
+    const gameData = req.body;
+
+    if (!gameData || !gameData.id) {
+        return res.status(400).json({ error: 'Invalid backup file format' });
+    }
+
+    // Overwrite in memory and save
+    games.set(gameData.id, gameData);
+    saveGame(gameData);
+
+    console.log(`Game ${gameData.id} imported/restored by Admin.`);
+    res.json({ success: true, gameId: gameData.id });
 });
 
 // Public endpoint - Get archived game for replay (no auth required)
@@ -438,6 +917,32 @@ app.get('/api/replay/:gameId', (req, res) => {
         finishedAt: game.lastActivity
     });
 });
+
+// Push Subscription Endpoint
+app.post('/api/subscribe', (req, res) => {
+    const { subscription, playerId } = req.body;
+    if (!subscription || !playerId) {
+        return res.status(400).json({ error: 'Subscription and playerId required' });
+    }
+
+    pushSubscriptions.set(playerId, subscription);
+    console.log(`Push subscription added for player ${playerId}`);
+    res.status(201).json({ success: true });
+});
+
+// Helper to send push notification
+const sendPushToPlayer = (playerId, payload) => {
+    const subscription = pushSubscriptions.get(playerId);
+    if (subscription) {
+        webpush.sendNotification(subscription, JSON.stringify(payload))
+            .catch(error => {
+                console.error(`Error sending push to ${playerId}:`, error);
+                if (error.statusCode === 410) { // Gone
+                    pushSubscriptions.delete(playerId);
+                }
+            });
+    }
+};
 
 // =====================
 // WebSocket handling
@@ -474,7 +979,7 @@ io.on('connection', (socket) => {
     // Create new game
     socket.on('createGame', (data, callback) => {
         try {
-            const { language, playerName } = data || {};
+            const { language, playerName, userId, showTileBagCount, showTileBagBreakdown } = data || {};
 
             if (!playerName) {
                 return safeCallback(callback, { success: false, error: 'Player name required' });
@@ -492,8 +997,16 @@ io.on('connection', (socket) => {
                 timeLimit: data.timeLimit,
                 enableChat: data.enableChat,
                 enableHistory: data.enableHistory,
-                qAsQu: data.qAsQu
+                qAsQu: data.qAsQu,
+                showTileBagCount: showTileBagCount,
+                showTileBagBreakdown: showTileBagBreakdown
             });
+
+            // Link userId to player in game
+            if (userId) {
+                game.players[0].userId = userId;
+                addGameToUser(userId, gameId);
+            }
 
             games.set(gameId, game);
             saveGame(game);
@@ -507,7 +1020,7 @@ io.on('connection', (socket) => {
                 game: getGameStateForPlayer(game, currentPlayerId)
             });
 
-            console.log(`Game created: ${gameId} (${language}) by ${playerName}`);
+            console.log(`Game created: ${gameId} (${language}) by ${playerName}${userId ? ` [user: ${userId}]` : ''}`);
         } catch (error) {
             console.error('Create game error:', error);
             safeCallback(callback, { success: false, error: error.message });
@@ -517,7 +1030,7 @@ io.on('connection', (socket) => {
     // Join existing game
     socket.on('joinGame', (data, callback) => {
         try {
-            const { gameId, playerName } = data || {};
+            const { gameId, playerName, userId } = data || {};
 
             if (!gameId || !playerName) {
                 return safeCallback(callback, { success: false, error: 'Game ID and player name required' });
@@ -541,6 +1054,16 @@ io.on('connection', (socket) => {
             }
 
             addPlayer(game, currentPlayerId, playerName);
+
+            // Link userId to this player in the game
+            if (userId) {
+                const playerInGame = game.players.find(p => p.id === currentPlayerId);
+                if (playerInGame) {
+                    playerInGame.userId = userId;
+                }
+                addGameToUser(userId, gameId.toUpperCase());
+            }
+
             saveGame(game);
 
             currentGameId = gameId.toUpperCase();
@@ -551,6 +1074,18 @@ io.on('connection', (socket) => {
                 player: { id: currentPlayerId, name: playerName },
                 playerCount: game.players.length
             });
+
+            // WEB PUSH: Notify Host (if not me)
+            if (game.players.length > 0) {
+                const host = game.players[0]; // Host is always first
+                if (host.id !== currentPlayerId) {
+                    sendPushToPlayer(host.id, {
+                        title: '¡Nuevo Jugador!',
+                        body: `${playerName} se ha unido a tu partida.`,
+                        url: '/'
+                    });
+                }
+            }
 
             // Send full game state to all players
             game.players.forEach(player => {
@@ -567,7 +1102,7 @@ io.on('connection', (socket) => {
                 game: getGameStateForPlayer(game, currentPlayerId)
             });
 
-            console.log(`Player ${playerName} joined game ${gameId}`);
+            console.log(`Player ${playerName} joined game ${gameId}${userId ? ` [user: ${userId}]` : ''}`);
         } catch (error) {
             console.error('Join game error:', error);
             safeCallback(callback, { success: false, error: error.message });
@@ -765,7 +1300,11 @@ io.on('connection', (socket) => {
     // Disconnect handling
     socket.on('disconnect', () => {
         if (currentPlayerId) {
-            playerSockets.delete(currentPlayerId);
+            // Only remove if this socket is the active one (prevents race condition on reconnect)
+            const currentSocket = playerSockets.get(currentPlayerId);
+            if (currentSocket === socket) {
+                playerSockets.delete(currentPlayerId);
+            }
         }
 
         if (currentGameId && currentPlayerId) {
@@ -783,6 +1322,20 @@ io.on('connection', (socket) => {
 
     // Helper: Broadcast game update to all players
     function broadcastGameUpdate(game) {
+        if (!game) return;
+
+        // Notify players of turn change (Web Push)
+        if (game.status === 'playing') {
+            const activePlayer = game.players[game.currentPlayerIndex];
+            if (activePlayer) {
+                sendPushToPlayer(activePlayer.id, {
+                    title: '¡Es tu turno!',
+                    body: `Te toca jugar en ${game.title || 'tu partida'}.`,
+                    url: '/'
+                });
+            }
+        }
+
         game.players.forEach(player => {
             const playerSocket = playerSockets.get(player.id);
             if (playerSocket) {
@@ -803,6 +1356,174 @@ io.on('connection', (socket) => {
 });
 
 // =====================
+// PERSISTENCE LOGIC
+// =====================
+
+const GAMES_FILE = path.join(__dirname, 'games.json');
+const ARCHIVE_FILE = path.join(__dirname, 'archive.json');
+
+function loadData(filePath) {
+    if (!fs.existsSync(filePath)) return [];
+    try {
+        const data = fs.readFileSync(filePath, 'utf-8');
+        return JSON.parse(data);
+    } catch (err) {
+        console.error(`Error loading ${filePath}:`, err);
+        return [];
+    }
+}
+
+function saveData(filePath, data) {
+    try {
+        fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
+    } catch (err) {
+        console.error(`Error saving ${filePath}:`, err);
+    }
+}
+
+function getActiveGames() {
+    return loadData(GAMES_FILE);
+}
+
+function saveGame(game) {
+    games.set(game.id, game); // Update memory
+
+    // Persist to file
+    const activeGames = Array.from(games.values());
+    saveData(GAMES_FILE, activeGames);
+}
+
+function getGame(gameId) {
+    if (games.has(gameId)) return games.get(gameId);
+
+    // Check archive
+    const archived = loadData(ARCHIVE_FILE);
+    const game = archived.find(g => g.id === gameId);
+    if (game) return game;
+
+    return null;
+}
+
+function deleteGame(gameId) {
+    let deleted = false;
+
+    // Remove from memory/active
+    if (games.has(gameId)) {
+        games.delete(gameId);
+        saveData(GAMES_FILE, Array.from(games.values()));
+        deleted = true;
+    }
+
+    // Remove from archive
+    const archived = loadData(ARCHIVE_FILE);
+    const newArchived = archived.filter(g => g.id !== gameId);
+    if (newArchived.length !== archived.length) {
+        saveData(ARCHIVE_FILE, newArchived);
+        deleted = true;
+    }
+
+    return deleted;
+}
+
+function archiveGame(gameId, title) {
+    const game = games.get(gameId);
+    if (!game) return null;
+
+    // Add title and archive metadata
+    game.title = title;
+    game.archivedAt = Date.now();
+
+    // Add to archive
+    const archived = loadData(ARCHIVE_FILE);
+    // Avoid duplicates
+    const index = archived.findIndex(g => g.id === gameId);
+    if (index >= 0) {
+        archived[index] = game;
+    } else {
+        archived.push(game);
+    }
+    saveData(ARCHIVE_FILE, archived);
+
+    return game;
+}
+
+function getArchivedGames() {
+    return loadData(ARCHIVE_FILE);
+}
+
+function updateGameTitle(gameId, title) {
+    const archived = loadData(ARCHIVE_FILE);
+    const game = archived.find(g => g.id === gameId);
+    if (game) {
+        game.title = title;
+        saveData(ARCHIVE_FILE, archived);
+        return true;
+    }
+    return false;
+}
+
+function cleanupOldGames() {
+    const now = Date.now();
+    const activeGames = Array.from(games.values());
+    let changed = false;
+
+    activeGames.forEach(game => {
+        // Example: cleanup waiting games older than 24h
+        if (game.status === 'waiting' && (now - game.createdAt > 86400000)) {
+            games.delete(game.id);
+            changed = true;
+        }
+    });
+
+    if (changed) {
+        saveData(GAMES_FILE, Array.from(games.values()));
+        console.log('Cleaned up old games');
+    }
+}
+
+// =====================
+// DICTIONARY MANAGEMENT
+// =====================
+
+import { createInterface } from 'readline';
+
+const dictionaryCache = new Map(); // <lang, Set<word>>
+
+function initializeDictionaries() {
+    const dictDir = path.join(__dirname, 'dictionaries');
+    if (!fs.existsSync(dictDir)) {
+        fs.mkdirSync(dictDir);
+        console.log('Created dictionaries directory');
+    }
+}
+
+function getDictionaryWords(lang) {
+    if (dictionaryCache.has(lang)) {
+        return Array.from(dictionaryCache.get(lang));
+    }
+
+    // Attempt to load from file
+    const dictPath = path.join(__dirname, 'dictionaries', `${lang}.txt`);
+    if (fs.existsSync(dictPath)) {
+        try {
+            const content = fs.readFileSync(dictPath, 'utf-8');
+            const words = content.split('\n').map(w => w.trim().toUpperCase()).filter(w => w);
+            dictionaryCache.set(lang, new Set(words));
+            return words;
+        } catch (err) {
+            console.error(`Error loading dictionary ${lang}:`, err);
+        }
+    }
+
+    return [];
+}
+
+function reloadDictionary(lang) {
+    dictionaryCache.delete(lang);
+    getDictionaryWords(lang); // Re-load
+}
+
+// =====================
 // Initialize and start server
 // =====================
 
@@ -820,6 +1541,23 @@ async function start() {
 
     // Schedule cleanup
     setInterval(cleanupOldGames, 3600000); // Every hour
+
+    // Serve static files from client build
+    app.use(express.static(path.join(__dirname, '../client/dist')));
+
+    // Handle SPA routing - return index.html for all non-API routes
+    app.get('*', (req, res) => {
+        if (!req.path.startsWith('/api')) {
+            const indexPath = path.join(__dirname, '../client/dist/index.html');
+            if (fs.existsSync(indexPath)) {
+                res.sendFile(indexPath);
+            } else {
+                res.status(404).send('Client build not found. Run "npm run build" in client directory.');
+            }
+        } else {
+            res.status(404).json({ error: 'Endpoint not found' });
+        }
+    });
 
     server.listen(PORT, () => {
         console.log(`Server running on port ${PORT}`);

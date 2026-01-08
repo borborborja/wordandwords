@@ -40,6 +40,8 @@ export function createGame(id, language, creatorId, creatorName, options = {}) {
         enableChat: options.enableChat !== false, // default true
         enableHistory: options.enableHistory !== false, // default true
         qAsQu: options.qAsQu || false, // Treat Q as QU (Catalan rule)
+        showTileBagCount: options.showTileBagCount !== false, // default true
+        showTileBagBreakdown: options.showTileBagBreakdown || false, // default false
         board: createEmptyBoard(),
         tileBag: remaining,
         players: [{
@@ -568,10 +570,21 @@ function validateTilePlacement(tiles, board, isFirstMove) {
 
 // Get game state for a specific player (hides other players' tiles)
 export function getGameStateForPlayer(game, playerId) {
+    // Calculate tile bag breakdown if enabled
+    let tileBagBreakdown = null;
+    if (game.showTileBagBreakdown) {
+        tileBagBreakdown = {};
+        for (const tile of game.tileBag) {
+            const letter = tile.letter || '?'; // blank tiles
+            tileBagBreakdown[letter] = (tileBagBreakdown[letter] || 0) + 1;
+        }
+    }
+
     return {
         ...game,
         tileBag: undefined, // Hide tile bag
-        tileBagCount: game.tileBag.length,
+        tileBagCount: game.showTileBagCount ? game.tileBag.length : undefined,
+        tileBagBreakdown,
         players: game.players.map(p => ({
             ...p,
             tiles: p.id === playerId ? p.tiles : p.tiles.map(() => ({ hidden: true }))

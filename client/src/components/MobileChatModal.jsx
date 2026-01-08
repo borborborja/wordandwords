@@ -17,7 +17,7 @@ export default function MobileChatModal({
             <div className="modal-content glass chat-modal" onClick={e => e.stopPropagation()}>
                 <div className="modal-header">
                     <h2>{t('sidebar.chat') || 'Chat'} / {t('sidebar.history') || 'History'}</h2>
-                    <button className="btn-close" onClick={onClose}>×</button>
+                    <button className="icon-close-btn" onClick={onClose}>✕</button>
                 </div>
 
                 <div className="chat-modal-body">

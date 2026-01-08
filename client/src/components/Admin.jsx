@@ -19,6 +19,7 @@ export default function Admin({ onClose, t }) {
     // Sub-states
     const [stats, setStats] = useState(null);
     const [games, setGames] = useState([]);
+    const [users, setUsers] = useState([]);
     const [config, setConfig] = useState({ gameName: '', serverUrl: '' });
 
     // View Game Modal State
@@ -49,6 +50,7 @@ export default function Admin({ onClose, t }) {
     const loadAllData = async () => {
         loadStats();
         loadGames();
+        loadUsers();
         loadConfig();
     };
 
@@ -95,6 +97,14 @@ export default function Admin({ onClose, t }) {
         } catch (e) { }
     };
 
+
+    const loadUsers = async () => {
+        try {
+            const res = await fetch(`${API_URL}/api/admin/users`, { headers: { Authorization: `Bearer ${token}` } });
+            if (res.ok) setUsers(await res.json());
+        } catch (e) { }
+    };
+
     const loadGames = async () => {
         try {
             const res = await fetch(`${API_URL}/api/admin/games`, { headers: { Authorization: `Bearer ${token}` } });
@@ -118,8 +128,10 @@ export default function Admin({ onClose, t }) {
         return (
             <div className="admin-overlay">
                 <div className="admin-panel glass animate-fade-in login-panel">
-                    <button className="close-btn" onClick={onClose}>✕</button>
-                    <h2>🔐 Admin Access</h2>
+                    <div className="admin-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                        <h2 style={{ margin: 0 }}>🔐 Admin Access</h2>
+                        <button className="icon-close-btn" onClick={onClose}>✕</button>
+                    </div>
                     <form onSubmit={handleLogin} className="login-form">
                         <input
                             type="password"
@@ -143,10 +155,13 @@ export default function Admin({ onClose, t }) {
         <div className="admin-overlay">
             <div className="admin-panel admin-panel-large glass animate-fade-in">
                 <div className="admin-header">
-                    <h2>⚙️ Panel Admin</h2>
+                    <h2>⚙️ Admin Panel</h2>
                     <div className="admin-tabs">
                         <button className={`tab-btn ${activeTab === 'stats' ? 'active' : ''}`} onClick={() => setActiveTab('stats')}>
                             📊 Estadísticas
+                        </button>
+                        <button className={`tab-btn ${activeTab === 'users' ? 'active' : ''}`} onClick={() => setActiveTab('users')}>
+                            👥 Usuarios
                         </button>
                         <button className={`tab-btn ${activeTab === 'games' ? 'active' : ''}`} onClick={() => setActiveTab('games')}>
                             🎮 Gestión Partidas
@@ -157,12 +172,13 @@ export default function Admin({ onClose, t }) {
                     </div>
                     <div className="header-actions">
                         <button className="btn btn-secondary btn-sm" onClick={handleLogout}>Salir</button>
-                        <button className="close-btn" onClick={onClose}>✕</button>
+                        <button className="icon-close-btn" onClick={onClose}>✕</button>
                     </div>
                 </div>
 
                 <div className="admin-content">
                     {activeTab === 'stats' && <StatsTab stats={stats} refresh={loadStats} />}
+                    {activeTab === 'users' && <UsersTab users={users} refresh={loadUsers} token={token} />}
                     {activeTab === 'games' && <GamesTab games={games} refresh={loadGames} token={token} setViewingGame={setViewingGame} config={config} />}
                     {activeTab === 'config' && <ConfigTab config={config} setConfig={setConfig} token={token} />}
                 </div>
@@ -224,6 +240,78 @@ function GamesTab({ games, refresh, token, setViewingGame, config }) {
     const [editingTitle, setEditingTitle] = useState(null);
     const [newTitle, setNewTitle] = useState('');
     const [selectedGames, setSelectedGames] = useState(new Set());
+    const fileInputRef = useRef(null);
+
+    // --- EXPORT / IMPORT LOGIC ---
+    const handleExport = async (gameId) => {
+        try {
+            const res = await fetch(`${API_URL}/api/admin/games/${gameId}/export`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            if (!res.ok) throw new Error('Export failed');
+
+            const data = await res.json();
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `game_backup_${gameId}_${new Date().toISOString().slice(0, 10)}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+        } catch (error) {
+            alert(`Error exportando partida: ${error.message}`);
+        }
+    };
+
+    const handleImportClick = () => {
+        fileInputRef.current?.click();
+    };
+
+    const handleImportFile = (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = async (event) => {
+            try {
+                const gameData = JSON.parse(event.target.result);
+                if (!gameData.id) throw new Error('Invalid backup file');
+
+                // Check if game exists
+                const existing = games.find(g => g.id === gameData.id) || archivedGames.find(g => g.id === gameData.id);
+
+                if (existing) {
+                    if (!confirm(`⚠ ¡ADVERTENCIA!\n\nLa partida con ID "${gameData.id}" YA EXISTE.\n\nSi importas este backup:\n1. Se SOBREESCRIBIRÁ el estado actual.\n2. Los jugadores podrían perder progresos recientes.\n3. Esta acción NO se puede deshacer.\n\n¿Estás seguro de continuar?`)) {
+                        return;
+                    }
+                }
+
+                const res = await fetch(`${API_URL}/api/admin/games/import`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${token}`
+                    },
+                    body: JSON.stringify(gameData)
+                });
+
+                if (res.ok) {
+                    alert('✅ Partida restaurada correctamente.');
+                    refresh();
+                } else {
+                    const err = await res.json();
+                    throw new Error(err.error || 'Server error');
+                }
+            } catch (error) {
+                alert(`Error importando backup: ${error.message}`);
+            } finally {
+                e.target.value = null; // Reset input
+            }
+        };
+        reader.readAsText(file);
+    };
 
     const loadArchivedGames = async () => {
         const res = await fetch(`${API_URL}/api/admin/archived-games`, {
@@ -381,14 +469,27 @@ function GamesTab({ games, refresh, token, setViewingGame, config }) {
                         👻 Eliminar inactivas ({games.filter(g => g.isGhost).length})
                     </button>
                 )}
-                {selectedGames.size > 0 && (
-                    <button className="btn btn-danger btn-sm" onClick={handleDeleteSelected}>
-                        🗑️ Borrar seleccionadas ({selectedGames.size})
-                    </button>
-                )}
             </div>
 
-            <h4 className="section-title">🎮 Partidas Activas ({games.length})</h4>
+            <div className="tab-header">
+                <h3>🎮 Partidas Activas ({games.length})</h3>
+                <div className="tab-actions-right">
+                    <input
+                        type="file"
+                        ref={fileInputRef}
+                        style={{ display: 'none' }}
+                        accept=".json"
+                        onChange={handleImportFile}
+                    />
+                    <button className="btn btn-outline btn-sm" onClick={handleImportClick}>
+                        📥 Importar Backup
+                    </button>
+                    <button className="btn btn-danger btn-sm" onClick={handleDeleteSelected} disabled={selectedGames.size === 0}>
+                        🗑️ Borrar ({selectedGames.size})
+                    </button>
+                </div>
+            </div>
+
             <div className="games-list-container">
                 <table className="games-table">
                     <thead>
@@ -452,6 +553,7 @@ function GamesTab({ games, refresh, token, setViewingGame, config }) {
                                 <td>
                                     <div className="row-actions">
                                         <button className="btn-icon" title="Ver" onClick={() => setViewingGame(g.id)}>👁️</button>
+                                        <button className="btn-icon" title="Exportar Backup" onClick={() => handleExport(g.id)}>💾</button>
                                         {g.status === 'finished' && (
                                             <button className="btn-icon" title="Archivar" onClick={() => handleArchive(g.id)}>📦</button>
                                         )}
@@ -501,8 +603,8 @@ function GamesTab({ games, refresh, token, setViewingGame, config }) {
                                                             onKeyDown={e => e.key === 'Enter' && handleUpdateTitle(g.id)}
                                                             autoFocus
                                                         />
-                                                        <button onClick={() => handleUpdateTitle(g.id)}>✓</button>
-                                                        <button onClick={() => setEditingTitle(null)}>✕</button>
+                                                        <button className="btn-icon" onClick={() => handleUpdateTitle(g.id)}>✓</button>
+                                                        <button className="btn-icon" onClick={() => setEditingTitle(null)}>✕</button>
                                                     </div>
                                                 ) : (
                                                     <span
@@ -522,6 +624,7 @@ function GamesTab({ games, refresh, token, setViewingGame, config }) {
                                             <td>
                                                 <div className="row-actions">
                                                     <button className="btn-icon" title="Ver" onClick={() => setViewingGame(g.id)}>👁️</button>
+                                                    <button className="btn-icon" title="Exportar Backup" onClick={() => handleExport(g.id)}>💾</button>
                                                     <button className="btn-icon" title="Enlace Replay" onClick={() => handleCopyReplayLink(g.id)}>🔗</button>
                                                     <button className="btn-icon btn-delete" title="Eliminar" onClick={() => handleDeleteArchived(g.id)}>🗑️</button>
                                                 </div>
@@ -533,6 +636,136 @@ function GamesTab({ games, refresh, token, setViewingGame, config }) {
                         )}
                     </div>
                 )}
+            </div>
+        </div>
+    );
+}
+
+
+
+function UsersTab({ users, refresh, token }) {
+    const [editingUser, setEditingUser] = useState(null);
+    const [editForm, setEditForm] = useState({ name: '', email: '' });
+    const [sendingLink, setSendingLink] = useState(null);
+
+    const handleEdit = (user) => {
+        setEditingUser(user.id);
+        setEditForm({ name: user.name, email: user.email || '' });
+    };
+
+    const handleSave = async (userId) => {
+        try {
+            const res = await fetch(`${API_URL}/api/admin/users/${userId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify(editForm)
+            });
+            if (res.ok) {
+                setEditingUser(null);
+                refresh();
+            } else {
+                alert('Error al guardar');
+            }
+        } catch (err) {
+            console.error(err);
+        }
+    };
+
+    const handleSendLink = async (email) => {
+        if (!email) return alert('El usuario no tiene email');
+        if (!confirm(`¿Enviar enlace de acceso a ${email}?`)) return;
+
+        setSendingLink(email);
+        try {
+            const res = await fetch(`${API_URL}/api/user/send-link`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email })
+            });
+            const data = await res.json();
+            if (data.success) {
+                alert('Enlace enviado correctamente');
+            } else {
+                alert(data.error || 'Error al enviar');
+            }
+        } catch (err) {
+            alert('Error de conexión');
+        } finally {
+            setSendingLink(null);
+        }
+    };
+
+    return (
+        <div className="users-tab">
+            <div className="table-container">
+                <table className="admin-table">
+                    <thead>
+                        <tr>
+                            <th>Nombre</th>
+                            <th>Email</th>
+                            <th>Partidas</th>
+                            <th>Última Actividad</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {users.map(user => (
+                            <tr key={user.id}>
+                                <td>
+                                    {editingUser === user.id ? (
+                                        <input
+                                            value={editForm.name}
+                                            onChange={e => setEditForm({ ...editForm, name: e.target.value })}
+                                            className="form-input"
+                                        />
+                                    ) : (
+                                        user.name
+                                    )}
+                                </td>
+                                <td>
+                                    {editingUser === user.id ? (
+                                        <input
+                                            value={editForm.email}
+                                            onChange={e => setEditForm({ ...editForm, email: e.target.value })}
+                                            className="form-input"
+                                        />
+                                    ) : (
+                                        <span className={!user.email ? 'text-muted' : ''}>
+                                            {user.email || 'Sin email'}
+                                        </span>
+                                    )}
+                                </td>
+                                <td>{user.gamesCount}</td>
+                                <td>{new Date(user.lastSeen).toLocaleDateString()}</td>
+                                <td>
+                                    {editingUser === user.id ? (
+                                        <div className="action-buttons">
+                                            <button className="btn btn-sm btn-primary" onClick={() => handleSave(user.id)}>💾</button>
+                                            <button className="btn btn-sm" onClick={() => setEditingUser(null)}>❌</button>
+                                        </div>
+                                    ) : (
+                                        <div className="action-buttons">
+                                            <button className="btn btn-sm" onClick={() => handleEdit(user)} title="Editar">✏️</button>
+                                            {user.email && (
+                                                <button
+                                                    className="btn btn-sm"
+                                                    onClick={() => handleSendLink(user.email)}
+                                                    disabled={sendingLink === user.email}
+                                                    title="Enviar enlace login"
+                                                >
+                                                    {sendingLink === user.email ? '...' : '📧'}
+                                                </button>
+                                            )}
+                                        </div>
+                                    )}
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
             </div>
         </div>
     );
@@ -550,13 +783,51 @@ function ConfigTab({ config, setConfig, token }) {
     // Server Config State
     const [serverName, setServerName] = useState(config.gameName);
     const [serverUrl, setServerUrl] = useState(config.serverUrl);
+    const [enableProfiles, setEnableProfiles] = useState(config.enableProfiles !== false);
     const [savingConfig, setSavingConfig] = useState(false);
+
+    // SMTP Config State
+    const smtpEnv = config.smtpEnv;
+    const [smtpHost, setSmtpHost] = useState(config.smtp?.host || '');
+    const [smtpPort, setSmtpPort] = useState(config.smtp?.port || '587');
+    const [smtpUser, setSmtpUser] = useState(config.smtp?.user || '');
+    const [smtpPass, setSmtpPass] = useState(config.smtp?.pass || '');
+    const [smtpFrom, setSmtpFrom] = useState(config.smtp?.from || '');
+
+    // SMTP Test State
+    const [testEmail, setTestEmail] = useState('');
+    const [testingSmtp, setTestingSmtp] = useState(false);
+    const [smtpTestResult, setSmtpTestResult] = useState(null);
 
     const fileInputRef = useRef(null);
 
     useEffect(() => {
         loadDictionary(selectedLang);
     }, [selectedLang]);
+
+    const handleTestSmtp = async () => {
+        setTestingSmtp(true);
+        setSmtpTestResult(null);
+        try {
+            const res = await fetch(`${API_URL}/api/admin/smtp/test`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify({ to: testEmail })
+            });
+            const data = await res.json();
+            setSmtpTestResult({
+                success: data.success,
+                message: data.success ? 'Email enviado correctamente' : (data.error || 'Error al enviar')
+            });
+        } catch (err) {
+            setSmtpTestResult({ success: false, message: 'Error de conexión' });
+        } finally {
+            setTestingSmtp(false);
+        }
+    };
 
     const loadDictionary = async (lang) => {
         setLoadingDict(true);
@@ -582,7 +853,18 @@ function ConfigTab({ config, setConfig, token }) {
                     'Content-Type': 'application/json',
                     Authorization: `Bearer ${token}`
                 },
-                body: JSON.stringify({ gameName: serverName, serverUrl })
+                body: JSON.stringify({
+                    gameName: serverName,
+                    serverUrl,
+                    enableProfiles,
+                    smtp: smtpEnv?.isEnvConfigured ? undefined : {
+                        host: smtpHost,
+                        port: smtpPort,
+                        user: smtpUser,
+                        pass: smtpPass,
+                        from: smtpFrom
+                    }
+                })
             });
             if (res.ok) {
                 alert('Configuración guardada!');
@@ -670,6 +952,107 @@ function ConfigTab({ config, setConfig, token }) {
                 <button className="btn btn-primary mt-2" onClick={handleSaveConfig} disabled={savingConfig}>
                     {savingConfig ? 'Guardando...' : 'Guardar Configuración'}
                 </button>
+
+                <div className="form-row mt-3">
+                    <label className="checkbox-label">
+                        <input
+                            type="checkbox"
+                            checked={enableProfiles}
+                            onChange={(e) => setEnableProfiles(e.target.checked)}
+                        />
+                        Perfiles Persistentes (permite recuperar sesión desde otro dispositivo)
+                    </label>
+                </div>
+            </div>
+
+            <div className="config-section">
+                <h3>📧 Configuración SMTP (Email)</h3>
+                {smtpEnv?.isEnvConfigured && (
+                    <div className="env-notice">
+                        ✅ SMTP configurado via variables de entorno (solo lectura)
+                    </div>
+                )}
+                {!smtpEnv?.isEnvConfigured && !smtpHost && (
+                    <div className="info-notice">
+                        ℹ️ SMTP no configurado - la recuperación por email no estará disponible
+                    </div>
+                )}
+                <div className="form-row">
+                    <label>Host SMTP:</label>
+                    <input
+                        value={smtpEnv?.isEnvConfigured ? smtpEnv.host : smtpHost}
+                        onChange={e => setSmtpHost(e.target.value)}
+                        className="input"
+                        placeholder="smtp.gmail.com"
+                        disabled={smtpEnv?.isEnvConfigured}
+                    />
+                </div>
+                <div className="form-row">
+                    <label>Puerto:</label>
+                    <input
+                        value={smtpEnv?.isEnvConfigured ? smtpEnv.port : smtpPort}
+                        onChange={e => setSmtpPort(e.target.value)}
+                        className="input"
+                        placeholder="587"
+                        disabled={smtpEnv?.isEnvConfigured}
+                    />
+                </div>
+                <div className="form-row">
+                    <label>Usuario:</label>
+                    <input
+                        value={smtpEnv?.isEnvConfigured ? smtpEnv.user : smtpUser}
+                        onChange={e => setSmtpUser(e.target.value)}
+                        className="input"
+                        placeholder="tu@email.com"
+                        disabled={smtpEnv?.isEnvConfigured}
+                    />
+                </div>
+                <div className="form-row">
+                    <label>Contraseña:</label>
+                    <input
+                        type="password"
+                        value={smtpEnv?.isEnvConfigured ? smtpEnv.pass : smtpPass}
+                        onChange={e => setSmtpPass(e.target.value)}
+                        className="input"
+                        placeholder="••••••••"
+                        disabled={smtpEnv?.isEnvConfigured}
+                    />
+                </div>
+                <div className="form-row">
+                    <label>Email Remitente:</label>
+                    <input
+                        value={smtpEnv?.isEnvConfigured ? smtpEnv.from : smtpFrom}
+                        onChange={e => setSmtpFrom(e.target.value)}
+                        className="input"
+                        placeholder="noreply@midominio.com"
+                        disabled={smtpEnv?.isEnvConfigured}
+                    />
+                </div>
+
+                <div className="smtp-test-section">
+                    <h4>🧪 Probar Configuración</h4>
+                    <div className="form-row inline">
+                        <input
+                            type="email"
+                            value={testEmail}
+                            onChange={e => setTestEmail(e.target.value)}
+                            className="input"
+                            placeholder="email@destino.com"
+                        />
+                        <button
+                            className="btn btn-secondary"
+                            onClick={handleTestSmtp}
+                            disabled={testingSmtp || !testEmail}
+                        >
+                            {testingSmtp ? 'Enviando...' : '📧 Enviar Test'}
+                        </button>
+                    </div>
+                    {smtpTestResult && (
+                        <div className={`test-result ${smtpTestResult.success ? 'success' : 'error'}`}>
+                            {smtpTestResult.success ? '✅' : '❌'} {smtpTestResult.message}
+                        </div>
+                    )}
+                </div>
             </div>
 
             <div className="config-section">
@@ -786,7 +1169,7 @@ function GamePreviewModal({ gameId, token, onClose }) {
                                 Volver al actual
                             </button>
                         )}
-                        <button className="close-btn" onClick={onClose}>✕</button>
+                        <button className="icon-close-btn" onClick={onClose}>✕</button>
                     </div>
                 </div>
                 <div className="game-preview-body">

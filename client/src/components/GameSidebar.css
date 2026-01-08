@@ -51,6 +51,8 @@
     flex-direction: column;
     min-height: 0;
     position: relative;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
 @media (max-width: 900px) {

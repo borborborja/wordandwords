@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useSocket } from './hooks/useSocket';
 import { useGame } from './hooks/useGame';
 import { useTranslation, LANGUAGES } from './i18n';
@@ -7,6 +7,7 @@ import WaitingRoom from './components/WaitingRoom';
 import Game from './components/Game';
 import Admin from './components/Admin';
 import GameReplay from './components/GameReplay';
+import UserDashboard from './components/UserDashboard';
 import './App.css';
 
 const API_URL = import.meta.env.PROD ? '' : `http://${window.location.hostname}:3001`;
@@ -23,7 +24,10 @@ export default function App() {
 
     const [showAdmin, setShowAdmin] = useState(false);
     const [gameName, setGameName] = useState('WordAndWords');
+    const [profilesEnabled, setProfilesEnabled] = useState(true);
     const [replayGameId, setReplayGameId] = useState(null);
+    const [user, setUser] = useState(null);
+    const [userLoading, setUserLoading] = useState(true);
 
     const { t } = useTranslation(uiLanguage);
     const socket = useSocket();
@@ -38,8 +42,135 @@ export default function App() {
                     setGameName(data.gameName);
                     document.title = `${data.gameName} - Multiplayer Word Game`;
                 }
+                if (data.enableProfiles !== undefined) {
+                    setProfilesEnabled(data.enableProfiles);
+                }
             })
             .catch(err => console.error('Failed to load config:', err));
+    }, []);
+
+    // Load user profile from localStorage OR from auth_token in URL (magic link)
+    useEffect(() => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const authToken = urlParams.get('auth_token');
+
+        // If auth_token in URL, verify it and auto-login
+        if (authToken) {
+            fetch(`${API_URL}/api/auth/verify?token=${authToken}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success && data.user) {
+                        setUser(data.user);
+                        localStorage.setItem('userId', data.user.id);
+                        // Clean URL
+                        window.history.replaceState({}, '', '/');
+                    }
+                })
+                .catch(err => console.error('Failed to verify auth token:', err))
+                .finally(() => setUserLoading(false));
+            return;
+        }
+
+        // Otherwise load from localStorage
+        const savedUserId = localStorage.getItem('userId');
+        if (savedUserId) {
+            fetch(`${API_URL}/api/user/${savedUserId}`)
+                .then(res => res.ok ? res.json() : null)
+                .then(userData => {
+                    if (userData) {
+                        setUser(userData);
+                    } else {
+                        // User no longer exists, clear localStorage
+                        localStorage.removeItem('userId');
+                    }
+                })
+                .catch(err => console.error('Failed to load user:', err))
+                .finally(() => setUserLoading(false));
+        } else {
+            setUserLoading(false);
+        }
+    }, []);
+
+    // Create user profile
+    const createUserProfile = useCallback(async (name, email = null) => {
+        try {
+            const res = await fetch(`${API_URL}/api/user/create`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, email })
+            });
+            const data = await res.json();
+            if (data.success) {
+                setUser(data.user);
+                localStorage.setItem('userId', data.user.id);
+                return data.user;
+            }
+            throw new Error(data.error);
+        } catch (err) {
+            console.error('Failed to create user:', err);
+            throw err;
+        }
+    }, []);
+
+    // Recover user profile by code
+    const recoverUserProfile = useCallback(async (code) => {
+        try {
+            const res = await fetch(`${API_URL}/api/user/recover`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ code })
+            });
+            const data = await res.json();
+            if (data.success) {
+                setUser(data.user);
+                localStorage.setItem('userId', data.user.id);
+                return data.user;
+            }
+            throw new Error(data.error || 'User not found');
+        } catch (err) {
+            console.error('Failed to recover user:', err);
+            throw err;
+        }
+    }, []);
+
+    // Update user profile
+    const updateUserProfile = useCallback(async (userId, data) => {
+        try {
+            const res = await fetch(`${API_URL}/api/user/${userId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            const updatedUser = await res.json();
+            if (updatedUser.success && updatedUser.user) {
+                setUser(updatedUser.user);
+                return updatedUser.user;
+            }
+        } catch (err) {
+            console.error('Failed to update user:', err);
+        }
+        return null;
+    }, []);
+
+    // Refresh user data (after game actions)
+    const refreshUser = useCallback(async () => {
+        const userId = localStorage.getItem('userId');
+        if (!userId) return;
+        try {
+            const res = await fetch(`${API_URL}/api/user/${userId}`);
+            if (res.ok) {
+                const userData = await res.json();
+                setUser(userData);
+            }
+        } catch (err) {
+            console.error('Failed to refresh user:', err);
+        }
+    }, []);
+
+    // Logout
+    const logoutUser = useCallback(() => {
+        setUser(null);
+        localStorage.removeItem('userId');
     }, []);
 
     // Save UI language preference
@@ -146,6 +277,14 @@ export default function App() {
                     gameName={gameName}
                     uiLanguage={uiLanguage}
                     onUiLanguageChange={setUiLanguage}
+                    initialGameCode={new URLSearchParams(window.location.search).get('code')}
+                    user={user}
+                    userLoading={userLoading}
+                    onCreateUser={createUserProfile}
+                    onRecoverUser={recoverUserProfile}
+                    onLogout={logoutUser}
+                    onRefreshUser={refreshUser}
+                    onOpenAdmin={() => setShowAdmin(true)}
                 />
             );
         }
@@ -171,8 +310,6 @@ export default function App() {
             <Lobby
                 onCreateGame={gameState.createGame}
                 onJoinGame={gameState.joinGame}
-                playerName={gameState.playerName}
-                onNameChange={gameState.setPlayerName}
                 loading={gameState.loading}
                 error={gameState.error}
                 t={t}
@@ -181,32 +318,45 @@ export default function App() {
                 onOpenAdmin={() => setShowAdmin(true)}
                 initialGameCode={new URLSearchParams(window.location.search).get('code')}
                 gameName={gameName}
+                user={user}
+                userLoading={userLoading}
+                onCreateUser={createUserProfile}
+                onRecoverUser={recoverUserProfile}
+                onLogout={logoutUser}
+                onRefreshUser={refreshUser}
+                onUpdateUser={updateUserProfile}
+                profilesEnabled={profilesEnabled}
             />
         );
     };
 
-    // If in replay mode, show the replay component
-    if (replayGameId) {
-        return (
-            <GameReplay
-                gameId={replayGameId}
-                onBack={() => {
-                    setReplayGameId(null);
-                    window.history.pushState({}, '', '/');
-                }}
-            />
-        );
-    }
-
     return (
         <div className="app">
             <ConnectionStatus />
-            {renderView()}
+
+            {/* If in replay mode, show replay component, else show main view */}
+            {replayGameId ? (
+                <GameReplay
+                    gameId={replayGameId}
+                    onBack={() => {
+                        setReplayGameId(null);
+                        window.history.pushState({}, '', '/');
+                    }}
+                />
+            ) : renderView()}
 
             {showAdmin && (
                 <Admin
                     onClose={() => setShowAdmin(false)}
                     t={t}
+                />
+            )}
+
+            {user && (
+                <UserDashboard
+                    user={user}
+                    t={t}
+                    onLogout={logoutUser}
                 />
             )}
         </div>

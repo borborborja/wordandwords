@@ -454,3 +454,69 @@
     display: block;
     box-shadow: 0 0 2px rgba(0, 0, 0, 0.5);
 }
+
+/* Login Success State */
+.login-success {
+    text-align: center;
+    padding: var(--space-xl) var(--space-lg);
+}
+
+.login-success .success-icon {
+    font-size: 4rem;
+    margin-bottom: var(--space-md);
+}
+
+.login-success h3 {
+    color: var(--accent-primary);
+    margin: 0 0 var(--space-sm) 0;
+}
+
+.login-success p {
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+/* Fallback Code Display */
+.fallback-code-display {
+    text-align: center;
+    padding: var(--space-lg);
+}
+
+.fallback-code-display p {
+    color: var(--text-secondary);
+    margin-bottom: var(--space-md);
+}
+
+.code-box {
+    font-family: var(--font-mono);
+    font-size: 2rem;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    color: var(--accent-primary);
+    background: rgba(102, 126, 234, 0.15);
+    border: 2px solid rgba(102, 126, 234, 0.3);
+    border-radius: var(--radius-md);
+    padding: var(--space-md) var(--space-lg);
+    display: inline-block;
+}
+
+/* Optional Tag */
+.optional {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    font-weight: 400;
+}
+
+/* Form Hint */
+.form-hint {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-top: 4px;
+}
+
+/* Login Card */
+.login-card {
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1)) !important;
+    border-color: rgba(102, 126, 234, 0.2) !important;
+}

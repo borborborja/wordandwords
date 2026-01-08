@@ -3,7 +3,9 @@
         "title": "WordAndWords",
         "subtitle": "Multiplayer Word Game",
         "createGame": "Create Game",
+        "createGameDesc": "Start a new game and invite friends",
         "joinGame": "Join Game",
+        "joinGameDesc": "Join an existing game with a code",
         "enterName": "Your name",
         "enterCode": "Game code",
         "selectLanguage": "Select language",
@@ -18,7 +20,34 @@
         "enableChat": "Enable Chat",
         "enableHistory": "Enable History",
         "timeLimit": "Time Limit",
-        "timeInfinite": "Infinite"
+        "timeInfinite": "Infinite",
+        "showTileBagCount": "Show tiles remaining",
+        "showTileBagBreakdown": "Show letter breakdown",
+        "recoverProfile": "Recover Profile",
+        "recoverProfileDesc": "Already have a recovery code?",
+        "enterRecoveryCode": "Recovery code",
+        "recover": "Recover",
+        "enterEmail": "Email",
+        "emailHint": "To access from other devices",
+        "haveAccount": "Already have an account?",
+        "loginDesc": "Access with your email",
+        "login": "Login",
+        "sendLink": "Send link",
+        "checkEmail": "Check your email!",
+        "linkSent": "We sent you a link to access",
+        "smtpNotConfigured": "Email not available. Use this code:",
+        "validateEmail": "Verify"
+    },
+    "common": {
+        "optional": "optional",
+        "back": "Back"
+    },
+    "dashboard": {
+        "myGames": "My Games",
+        "noGames": "No active games",
+        "waitingTurn": "Waiting...",
+        "recoveryHint": "Save this code to recover your profile from another device",
+        "logout": "Log Out"
     },
     "game": {
         "yourTurn": "Your turn",
@@ -39,7 +68,8 @@
         "playAgain": "Play Again",
         "leave": "Leave Game",
         "zoomIn": "Zoom In",
-        "zoomOut": "Zoom Out"
+        "zoomOut": "Zoom Out",
+        "tilesRemaining": "tiles"
     },
     "board": {
         "TW": "TW",

@@ -3,7 +3,9 @@
         "title": "WordAndWords",
         "subtitle": "Juego de Palabras Multijugador",
         "createGame": "Crear Partida",
+        "createGameDesc": "Crea una nueva partida e invita a tus amigos",
         "joinGame": "Unirse",
+        "joinGameDesc": "Únete a una partida existente con un código",
         "enterName": "Tu nombre",
         "enterCode": "Código de partida",
         "selectLanguage": "Selecciona idioma",
@@ -18,7 +20,34 @@
         "enableChat": "Activar Chat",
         "enableHistory": "Activar Historial",
         "timeLimit": "Límite de tiempo",
-        "timeInfinite": "Infinito"
+        "timeInfinite": "Infinito",
+        "showTileBagCount": "Mostrar fichas restantes",
+        "showTileBagBreakdown": "Desglose por letra",
+        "recoverProfile": "Recuperar Perfil",
+        "recoverProfileDesc": "¿Ya tienes un código de recuperación?",
+        "enterRecoveryCode": "Código de recuperación",
+        "recover": "Recuperar",
+        "enterEmail": "Email",
+        "emailHint": "Para acceder desde otros dispositivos",
+        "haveAccount": "¿Ya tienes cuenta?",
+        "loginDesc": "Accede con tu email",
+        "login": "Acceder",
+        "sendLink": "Enviar enlace",
+        "checkEmail": "¡Revisa tu email!",
+        "linkSent": "Te hemos enviado un enlace para acceder",
+        "smtpNotConfigured": "Email no disponible. Usa este código:",
+        "validateEmail": "Validar"
+    },
+    "common": {
+        "optional": "opcional",
+        "back": "Volver"
+    },
+    "dashboard": {
+        "myGames": "Mis Partidas",
+        "noGames": "No tienes partidas activas",
+        "waitingTurn": "Esperando...",
+        "recoveryHint": "Guarda este código para recuperar tu perfil desde otro dispositivo",
+        "logout": "Cerrar Sesión"
     },
     "game": {
         "yourTurn": "Tu turno",
@@ -39,7 +68,8 @@
         "playAgain": "Volver a Jugar",
         "leave": "Salir",
         "zoomIn": "Acercar",
-        "zoomOut": "Alejar"
+        "zoomOut": "Alejar",
+        "tilesRemaining": "fichas"
     },
     "board": {
         "TW": "TP",

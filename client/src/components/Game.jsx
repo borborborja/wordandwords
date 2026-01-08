@@ -8,6 +8,7 @@ import Scoreboard from './Scoreboard';
 import GameHistory from './GameHistory';
 import Settings, { sendTurnNotification } from './Settings';
 import { soundManager } from '../utils/SoundManager';
+import TileBagInfo from './TileBagInfo';
 import './Game.css';
 
 export default function Game({
@@ -223,7 +224,7 @@ export default function Game({
                 <div className="modal glass animate-fade-in" onClick={e => e.stopPropagation()} style={{ width: '90%', maxWidth: '600px' }}>
                     <div className="modal-header" style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'space-between' }}>
                         <h3>📸 {snapshotInfo}</h3>
-                        <button className="close-btn" onClick={() => setViewingSnapshot(null)}>✕</button>
+                        <button className="icon-close-btn" onClick={() => setViewingSnapshot(null)}>✕</button>
                     </div>
                     <div className="board-container pointer-events-none">
                         <Board
@@ -342,6 +343,15 @@ export default function Game({
                                 <span>Double Letter</span>
                             </div>
                         </div>
+
+                        {/* Tile Bag Info */}
+                        {game.tileBagCount !== undefined && (
+                            <TileBagInfo
+                                count={game.tileBagCount}
+                                breakdown={game.tileBagBreakdown}
+                                t={t}
+                            />
+                        )}
                     </div>
                 </div>
             </main>
