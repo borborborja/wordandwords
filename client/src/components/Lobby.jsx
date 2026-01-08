@@ -274,6 +274,16 @@ export default function Lobby({
                                         <div className="success-icon">✉️</div>
                                         <h3>{t('lobby.checkEmail') || '¡Revisa tu email!'}</h3>
                                         <p>{t('lobby.linkSent') || 'Te hemos enviado un enlace para acceder'}</p>
+                                        <button
+                                            className="btn-link"
+                                            style={{ marginTop: '1rem' }}
+                                            onClick={() => {
+                                                setLoginSent(false);
+                                                handleSendLoginLink();
+                                            }}
+                                        >
+                                            {t('lobby.resendEmail') || 'Reenviar email'}
+                                        </button>
                                     </div>
                                 ) : fallbackCode ? (
                                     <div className="fallback-code-display">
@@ -340,7 +350,14 @@ export default function Lobby({
                                             )}
                                         </div>
                                         <small className="form-hint">
-                                            {emailValidating ? (t('lobby.checkEmail') || '¡Revisa tu email!') :
+                                            {emailValidating ? (
+                                                <>
+                                                    {t('lobby.checkEmail') || '¡Revisa tu email!'} {' '}
+                                                    <button className="btn-link btn-link-sm" onClick={handleValidateEmail}>
+                                                        ({t('lobby.resend') || 'reenviar'})
+                                                    </button>
+                                                </>
+                                            ) :
                                                 emailValidated ? (t('lobby.emailVerified') || 'Email verificado') :
                                                     (t('lobby.emailHint') || 'Para acceder desde otros dispositivos')}
                                         </small>

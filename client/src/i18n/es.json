@@ -36,7 +36,9 @@
         "checkEmail": "¡Revisa tu email!",
         "linkSent": "Te hemos enviado un enlace para acceder",
         "smtpNotConfigured": "Email no disponible. Usa este código:",
-        "validateEmail": "Validar"
+        "validateEmail": "Validar",
+        "resend": "reenviar",
+        "resendEmail": "Reenviar email"
     },
     "common": {
         "optional": "opcional",

@@ -36,7 +36,9 @@
         "checkEmail": "Check your email!",
         "linkSent": "We sent you a link to access",
         "smtpNotConfigured": "Email not available. Use this code:",
-        "validateEmail": "Verify"
+        "validateEmail": "Verify",
+        "resend": "resend",
+        "resendEmail": "Resend email"
     },
     "common": {
         "optional": "optional",

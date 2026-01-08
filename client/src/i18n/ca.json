@@ -36,7 +36,9 @@
         "checkEmail": "Revisa el teu email!",
         "linkSent": "T'hem enviat un enllaç per accedir",
         "smtpNotConfigured": "Email no disponible. Usa aquest codi:",
-        "validateEmail": "Validar"
+        "validateEmail": "Validar",
+        "resend": "reenviar",
+        "resendEmail": "Reenviar email"
     },
     "common": {
         "optional": "opcional",
