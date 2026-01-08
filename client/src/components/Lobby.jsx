@@ -54,7 +54,7 @@ export default function Lobby({
             if (user.name) setLocalName(user.name);
             if (user.email) setLocalEmail(user.email);
         }
-    }, [user]);
+    }, [user, user?.name, user?.email]);
 
     // Handle email validation - send verification link and poll
     const handleValidateEmail = async () => {
@@ -101,17 +101,18 @@ export default function Lobby({
 
     // Handle game creation - create user profile if needed
     const handleCreate = async () => {
-        if (!localName.trim()) return;
+        const displayName = user?.name || localName.trim();
+        if (!displayName) return;
 
         // If no user profile, create one first (with email)
         if (!user && onCreateUser) {
             try {
-                await onCreateUser(localName.trim(), localEmail.trim() || null);
+                await onCreateUser(displayName, localEmail.trim() || null);
             } catch (err) {
                 console.error('Failed to create user profile:', err);
             }
-        } else if (user && localEmail.trim() && onUpdateUser) {
-            // If user exists and provides email, update profile
+        } else if (user && localEmail.trim() && !user.email && onUpdateUser) {
+            // If user exists, provides email, and didn't have one, update profile
             try {
                 await onUpdateUser(user.id, { email: localEmail.trim() });
             } catch (err) {
@@ -119,7 +120,7 @@ export default function Lobby({
             }
         }
 
-        onCreateGame(gameLanguage, localName.trim(), {
+        onCreateGame(gameLanguage, displayName, {
             strictMode,
             timeLimit,
             enableChat,
@@ -132,17 +133,18 @@ export default function Lobby({
 
     // Handle joining game
     const handleJoin = async () => {
-        if (!localName.trim() || !gameCode.trim()) return;
+        const displayName = user?.name || localName.trim();
+        if (!displayName || !gameCode.trim()) return;
 
         // If no user profile, create one first
         if (!user && onCreateUser) {
             try {
-                await onCreateUser(localName.trim(), localEmail.trim() || null);
+                await onCreateUser(displayName, localEmail.trim() || null);
             } catch (err) {
                 console.error('Failed to create user profile:', err);
             }
-        } else if (user && localEmail.trim() && onUpdateUser) {
-            // If user exists and provides email, update profile
+        } else if (user && localEmail.trim() && !user.email && onUpdateUser) {
+            // If user exists, provides email, and didn't have one, update profile
             try {
                 await onUpdateUser(user.id, { email: localEmail.trim() });
             } catch (err) {
@@ -150,7 +152,7 @@ export default function Lobby({
             }
         }
 
-        onJoinGame(gameCode.trim(), localName.trim());
+        onJoinGame(gameCode.trim(), displayName);
     };
 
     // Handle login via email (send magic link)
@@ -498,11 +500,11 @@ export default function Lobby({
                                         onClick={mode === 'create' ? handleCreate : mode === 'join' ? handleJoin : handleSendLoginLink}
                                         disabled={
                                             loading ||
-                                            (mode === 'create' && !localName.trim()) ||
-                                            (mode === 'join' && (!localName.trim() || !gameCode.trim())) ||
+                                            (mode === 'create' && !(user?.name || localName.trim())) ||
+                                            (mode === 'join' && (!(user?.name || localName.trim()) || !gameCode.trim())) ||
                                             (mode === 'login' && !loginEmail.trim()) ||
                                             // Block if email entered but not validated
-                                            (localEmail.trim() && !emailValidated)
+                                            (!user && localEmail.trim() && !emailValidated)
                                         }
                                     >
                                         {loading ? 'Loading...' :
