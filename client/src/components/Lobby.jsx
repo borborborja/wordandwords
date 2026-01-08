@@ -23,6 +23,7 @@ export default function Lobby({
     onRecoverUser,
     onLogout,
     onRefreshUser,
+    onEnterGame,
     profilesEnabled = true
 }) {
     const { isInstallable, install } = usePWAInstall();
@@ -171,39 +172,18 @@ export default function Lobby({
         }
     };
 
-    // If user is logged in and has active games, show dashboard
-    if (user && user.activeGames?.length > 0 && !mode) {
-        return (
-            <div className="lobby page">
-                <div className="lobby-header">
-                    <button className="admin-btn" onClick={onOpenAdmin} title="Admin Panel">⚙️</button>
-                    <div className="language-switcher">
-                        {LANGUAGES.map(lang => (
-                            <button
-                                key={lang.code}
-                                className={`lang-btn ${uiLanguage === lang.code ? 'active' : ''}`}
-                                onClick={() => onUiLanguageChange(lang.code)}
-                            >
-                                {lang.code.toUpperCase()}
-                            </button>
-                        ))}
-                    </div>
-                </div>
-                <UserDashboard
-                    user={user}
-                    onEnterGame={(gameId) => onJoinGame(gameId, user.name)}
-                    onCreateGame={() => setMode('create')}
-                    onJoinGame={() => setMode('join')}
-                    onLogout={onLogout}
-                    t={t}
-                />
-            </div>
-        );
-    }
+    // If user is logged in, show dashboard instead of main actions (unless in form mode)
+    const showDashboard = user && !mode;
 
     return (
         <div className="lobby page">
             <div className="lobby-header">
+                {user && (
+                    <div className="user-pill glass" title={user.email || user.name}>
+                        <span className="user-icon">👤</span>
+                        <span className="user-name">{user.name}</span>
+                    </div>
+                )}
                 <button
                     className="admin-btn"
                     onClick={onOpenAdmin}
@@ -230,7 +210,16 @@ export default function Lobby({
                     <p className="lobby-subtitle">{t('lobby.subtitle')}</p>
                 </div>
 
-                {!mode && (
+                {showDashboard ? (
+                    <UserDashboard
+                        user={user}
+                        onEnterGame={onEnterGame}
+                        onCreateGame={() => setMode('create')}
+                        onJoinGame={() => setMode('join')}
+                        onLogout={onLogout}
+                        t={t}
+                    />
+                ) : !mode ? (
                     <div className="lobby-actions animate-fade-in">
                         <div className="lobby-card glass" onClick={() => setMode('create')}>
                             <div className="card-icon">🎮</div>
@@ -244,7 +233,7 @@ export default function Lobby({
                             <p>{t('lobby.joinGameDesc')}</p>
                         </div>
 
-                        {profilesEnabled && (
+                        {profilesEnabled && !user && (
                             <div className="lobby-card glass login-card" onClick={() => setMode('login')}>
                                 <div className="card-icon">📧</div>
                                 <h3>{t('lobby.haveAccount') || '¿Ya tienes cuenta?'}</h3>

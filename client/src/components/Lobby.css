@@ -15,6 +15,31 @@
     align-items: center;
 }
 
+.user-pill {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+    padding: var(--space-xs) var(--space-md);
+    border-radius: var(--radius-full);
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--glass-border);
+}
+
+.user-icon {
+    font-size: 1rem;
+    opacity: 0.8;
+}
+
+.user-name {
+    max-width: 150px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 .admin-btn {
     width: 40px;
     height: 40px;

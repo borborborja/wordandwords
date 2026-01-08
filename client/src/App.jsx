@@ -326,6 +326,7 @@ export default function App() {
                 onRefreshUser={refreshUser}
                 onUpdateUser={updateUserProfile}
                 profilesEnabled={profilesEnabled}
+                onEnterGame={(gameId) => gameState.joinGame(gameId, user?.name)}
             />
         );
     };
@@ -349,14 +350,6 @@ export default function App() {
                 <Admin
                     onClose={() => setShowAdmin(false)}
                     t={t}
-                />
-            )}
-
-            {user && (
-                <UserDashboard
-                    user={user}
-                    t={t}
-                    onLogout={logoutUser}
                 />
             )}
         </div>

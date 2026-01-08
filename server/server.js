@@ -197,16 +197,12 @@ async function getTransporter() {
     });
 }
 
-// Get user by ID
-app.get('/api/user/:userId', (req, res) => {
-    const user = getUser(req.params.userId);
-
-    if (!user) {
-        return res.status(404).json({ error: 'User not found' });
-    }
+// Expand user with full game details
+function expandUser(user) {
+    if (!user) return null;
 
     // Get game details for each active game
-    const gameDetails = user.activeGames.map(gameId => {
+    const gameDetails = (user.activeGames || []).map(gameId => {
         const game = games.get(gameId) || getGame(gameId);
         if (!game) return null;
         return {
@@ -215,17 +211,28 @@ app.get('/api/user/:userId', (req, res) => {
             language: game.language,
             players: game.players.map(p => ({ name: p.name, score: p.score })),
             currentPlayerIndex: game.currentPlayerIndex,
-            isMyTurn: game.players[game.currentPlayerIndex]?.id === req.params.userId
+            isMyTurn: game.players[game.currentPlayerIndex]?.id === user.id
         };
     }).filter(Boolean);
 
-    res.json({
+    return {
         id: user.id,
         name: user.name,
         email: user.email,
         recoveryCode: user.recoveryCode,
         activeGames: gameDetails
-    });
+    };
+}
+
+// Get user by ID
+app.get('/api/user/:userId', (req, res) => {
+    const user = getUser(req.params.userId);
+
+    if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.json(expandUser(user));
 });
 
 // Recover profile by code
@@ -246,13 +253,7 @@ app.post('/api/user/recover', (req, res) => {
 
     res.json({
         success: true,
-        user: {
-            id: user.id,
-            name: user.name,
-            email: user.email,
-            recoveryCode: user.recoveryCode,
-            activeGames: user.activeGames
-        }
+        user: expandUser(user)
     });
 });
 
@@ -345,13 +346,7 @@ app.get('/api/auth/verify', (req, res) => {
 
     res.json({
         success: true,
-        user: {
-            id: user.id,
-            name: user.name,
-            email: user.email,
-            recoveryCode: user.recoveryCode,
-            activeGames: user.activeGames
-        }
+        user: expandUser(user)
     });
 });
 
