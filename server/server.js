@@ -533,8 +533,17 @@ let serverConfig = {
 try {
     if (fs.existsSync(CONFIG_FILE)) {
         const data = fs.readFileSync(CONFIG_FILE, 'utf8');
-        serverConfig = { ...serverConfig, ...JSON.parse(data) };
-        console.log('Loaded server config:', serverConfig);
+        const fileConfig = JSON.parse(data);
+        serverConfig = { ...serverConfig, ...fileConfig };
+
+        // Re-apply environment variables to ensure priority
+        if (process.env.GAME_NAME) serverConfig.gameName = process.env.GAME_NAME;
+        if (SERVER_URL_ENV.isSet) serverConfig.serverUrl = SERVER_URL_ENV.url;
+
+        console.log('Loaded server config (with env overrides):', {
+            ...serverConfig,
+            smtp: { ...serverConfig.smtp, pass: serverConfig.smtp?.pass ? '********' : '' }
+        });
     }
 } catch (err) {
     console.error('Error loading config:', err);
