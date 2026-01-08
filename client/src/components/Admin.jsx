@@ -178,9 +178,9 @@ export default function Admin({ onClose, t }) {
 
                 <div className="admin-content">
                     {activeTab === 'stats' && <StatsTab stats={stats} refresh={loadStats} />}
-                    {activeTab === 'users' && <UsersTab users={users} refresh={loadUsers} token={token} />}
-                    {activeTab === 'games' && <GamesTab games={games} refresh={loadGames} token={token} setViewingGame={setViewingGame} config={config} />}
-                    {activeTab === 'config' && <ConfigTab config={config} setConfig={setConfig} token={token} />}
+                    {activeTab === 'users' && <UsersTab users={users} refresh={loadUsers} token={token} t={t} />}
+                    {activeTab === 'games' && <GamesTab games={games} refresh={loadGames} token={token} setViewingGame={setViewingGame} config={config} t={t} />}
+                    {activeTab === 'config' && <ConfigTab config={config} setConfig={setConfig} token={token} t={t} />}
                 </div>
 
                 {viewingGame && (
@@ -643,7 +643,7 @@ function GamesTab({ games, refresh, token, setViewingGame, config }) {
 
 
 
-function UsersTab({ users, refresh, token }) {
+function UsersTab({ users, refresh, token, t }) {
     const [editingUser, setEditingUser] = useState(null);
     const [editForm, setEditForm] = useState({ name: '', email: '' });
     const [sendingLink, setSendingLink] = useState(null);
@@ -697,6 +697,23 @@ function UsersTab({ users, refresh, token }) {
             setSendingLink(null);
         }
     };
+    const handleDeleteUser = async (userId) => {
+        if (!confirm(t('admin.confirmDeleteUser') || "¿Estás seguro de que quieres borrar este usuario?")) return;
+
+        try {
+            const res = await fetch(`${API_URL}/api/admin/users/${userId}`, {
+                method: 'DELETE',
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            if (res.ok) {
+                refresh();
+            } else {
+                alert('Error al borrar usuario');
+            }
+        } catch (err) {
+            alert('Error de conexión');
+        }
+    };
 
     return (
         <div className="users-tab">
@@ -705,6 +722,7 @@ function UsersTab({ users, refresh, token }) {
                     <thead>
                         <tr>
                             <th>Nombre</th>
+                            <th>Code</th>
                             <th>Email</th>
                             <th>Partidas</th>
                             <th>Última Actividad</th>
@@ -724,6 +742,9 @@ function UsersTab({ users, refresh, token }) {
                                     ) : (
                                         user.name
                                     )}
+                                </td>
+                                <td>
+                                    <span className="mono-badge">{user.recoveryCode}</span>
                                 </td>
                                 <td>
                                     {editingUser === user.id ? (
@@ -749,6 +770,7 @@ function UsersTab({ users, refresh, token }) {
                                     ) : (
                                         <div className="action-buttons">
                                             <button className="btn btn-sm" onClick={() => handleEdit(user)} title="Editar">✏️</button>
+                                            <button className="btn btn-sm btn-danger" onClick={() => handleDeleteUser(user.id)} title={t('admin.deleteUser') || "Borrar"}>🗑️</button>
                                             {user.email && (
                                                 <button
                                                     className="btn btn-sm"

@@ -35,12 +35,14 @@
         "loginWithEmail": "Use Email",
         "loginWithCode": "Use Code",
         "sendLink": "Send link",
+        "accessAccount": "Access",
         "checkEmail": "Check your email!",
         "linkSent": "We sent you a link to access",
         "smtpNotConfigured": "Email not available. Use this code:",
         "validateEmail": "Verify",
         "resend": "resend",
-        "resendEmail": "Resend email"
+        "resendEmail": "Resend email",
+        "changeEmail": "Change Email"
     },
     "common": {
         "optional": "optional",
@@ -50,8 +52,20 @@
         "myGames": "My Games",
         "noGames": "No active games",
         "waitingTurn": "Waiting...",
+        "waitingPlayers": "Waiting for players...",
+        "readyToStart": "Ready to start",
+        "gameCode": "Code",
+        "settings": "Options",
+        "viewRoom": "View room",
+        "play": "Play",
+        "viewResult": "View result",
         "recoveryHint": "Save this code to recover your profile from another device",
-        "logout": "Log Out"
+        "logout": "Log Out",
+        "noEmail": "No email linked",
+        "recoveryCode": "Recovery Code",
+        "showCode": "Show code",
+        "changeEmail": "Change Email",
+        "linkEmail": "Link Email"
     },
     "game": {
         "yourTurn": "Your turn",
@@ -99,8 +113,9 @@
         "profileCode": "Profile Code",
         "profileCodeDesc": "Use this code to access from another device",
         "linkEmail": "Link Email",
-        "linkEmailDesc": "Add an email to recover your account easily",
-        "enterEmailToLink": "Email to link"
+        "linkEmailDesc": "Add an email to easily recover your account",
+        "enterEmailToLink": "Email to link",
+        "changeEmail": "Change"
     },
     "sidebar": {
         "chat": "Chat",
@@ -129,5 +144,10 @@
         "gameFull": "Game is full",
         "invalidMove": "Invalid move",
         "notYourTurn": "It's not your turn"
+    },
+    "admin": {
+        "deleteUser": "Delete User",
+        "confirmDeleteUser": "Are you sure you want to delete this user? This action cannot be undone.",
+        "recoveryCode": "Recovery Code"
     }
 }

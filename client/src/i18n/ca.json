@@ -35,12 +35,14 @@
         "loginWithEmail": "Usar Email",
         "loginWithCode": "Usar Codi",
         "sendLink": "Enviar enllaç",
+        "accessAccount": "Accedir",
         "checkEmail": "Revisa el teu email!",
         "linkSent": "T'hem enviat un enllaç per accedir",
         "smtpNotConfigured": "Email no disponible. Usa aquest codi:",
         "validateEmail": "Validar",
         "resend": "reenviar",
-        "resendEmail": "Reenviar email"
+        "resendEmail": "Reenviar email",
+        "changeEmail": "Canviar Email"
     },
     "common": {
         "optional": "opcional",
@@ -50,8 +52,20 @@
         "myGames": "Les Meves Partides",
         "noGames": "No tens partides actives",
         "waitingTurn": "Esperant...",
+        "waitingPlayers": "Esperant jugadors...",
+        "readyToStart": "Llest per començar",
+        "gameCode": "Codi",
+        "settings": "Opcions",
+        "viewRoom": "Veure sala",
+        "play": "Jugar",
+        "viewResult": "Veure resultat",
         "recoveryHint": "Guarda aquest codi per recuperar el teu perfil des d'un altre dispositiu",
-        "logout": "Tancar Sessió"
+        "logout": "Tancar Sessió",
+        "noEmail": "Sense email",
+        "recoveryCode": "Codi de Recuperació",
+        "showCode": "Mostrar codi",
+        "changeEmail": "Canviar Email",
+        "linkEmail": "Vincular Email"
     },
     "game": {
         "yourTurn": "El teu torn",
@@ -100,7 +114,8 @@
         "profileCodeDesc": "Usa aquest codi per accedir des d'un altre dispositiu",
         "linkEmail": "Vincular Email",
         "linkEmailDesc": "Afegeix un email per recuperar el teu compte fàcilment",
-        "enterEmailToLink": "Email per vincular"
+        "enterEmailToLink": "Email per vincular",
+        "changeEmail": "Canviar"
     },
     "sidebar": {
         "chat": "Xat",
@@ -129,5 +144,10 @@
         "gameFull": "La partida és plena",
         "invalidMove": "Moviment invàlid",
         "notYourTurn": "No és el teu torn"
+    },
+    "admin": {
+        "deleteUser": "Esborrar Usuari",
+        "confirmDeleteUser": "Estàs segur que vols esborrar aquest usuari? Aquesta acció no es pot desfer.",
+        "recoveryCode": "Codi de Recuperació"
     }
 }

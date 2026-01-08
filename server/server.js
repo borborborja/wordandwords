@@ -28,6 +28,7 @@ import {
     updateUser as updateUserProfile,
     generateMagicToken,
     verifyMagicToken,
+    deleteUser,
     createVerificationToken,
     verifyEmailToken,
     isEmailVerified,
@@ -211,7 +212,13 @@ function expandUser(user) {
             language: game.language,
             players: game.players.map(p => ({ name: p.name, score: p.score })),
             currentPlayerIndex: game.currentPlayerIndex,
-            isMyTurn: game.players[game.currentPlayerIndex]?.id === user.id
+            isMyTurn: game.players[game.currentPlayerIndex]?.id === user.id,
+            // Game settings for display
+            strictMode: game.strictMode,
+            timeLimit: game.timeLimit,
+            enableChat: game.enableChat,
+            enableHistory: game.enableHistory,
+            createdAt: game.createdAt
         };
     }).filter(Boolean);
 
@@ -391,6 +398,16 @@ app.put('/api/admin/users/:userId', (req, res) => {
     res.json({ success: true, user: updated });
 });
 
+// Delete user (Admin)
+app.delete('/api/admin/users/:id', (req, res) => {
+    const { id } = req.params;
+    if (deleteUser(id)) {
+        res.json({ success: true });
+    } else {
+        res.status(404).json({ error: 'User not found' });
+    }
+});
+
 
 // START VERIFICATION API
 // Init verification for new/unknown emails
@@ -486,6 +503,66 @@ app.get('/api/games/:id', (req, res) => {
         playerCount: game.players.length,
         players: game.players.map(p => ({ id: p.id, name: p.name, score: p.score }))
     });
+});
+
+// Cancel game (Host only)
+app.post('/api/games/:id/cancel', (req, res) => {
+    const { id } = req.params;
+    const { userId } = req.body;
+
+    const game = games.get(id);
+    if (!game) return res.status(404).json({ error: 'Game not found' });
+
+    // Verify host (first player)
+    const host = game.players[0];
+    if (!host.userId || host.userId !== userId) {
+        return res.status(403).json({ error: 'Only the host can cancel the game' });
+    }
+
+    // Logic: Immediate delete if waiting alone, otherwise cancel
+    if (game.status === 'waiting' && game.players.length === 1) {
+        deleteGame(id); // Delete from DB and Memory
+        io.to(id).emit('gameTerminated', { reason: 'Game deleted by host' });
+        return res.json({ success: true, action: 'deleted' });
+    } else {
+        game.status = 'cancelled';
+        game.cancelledBy = host.name;
+        saveGame(game);
+
+        io.to(id).emit('gameCancelled', {
+            by: host.name,
+            reason: 'The host has cancelled the game.'
+        });
+
+        return res.json({ success: true, action: 'cancelled' });
+    }
+});
+
+// Delete game (Host or Admin - strict check)
+app.delete('/api/games/:id', (req, res) => {
+    const { id } = req.params;
+    const { userId } = req.body; // Passed in body for DELETE
+
+    const game = games.get(id);
+    if (!game) {
+        // If not in active games, check if we claim to be deleting it (idempotency)
+        // or check archive/db if strict. For now, 404 is fine.
+        return res.status(404).json({ error: 'Game not found' });
+    }
+
+    // Verify host
+    const host = game.players[0];
+    const isHost = host.userId && host.userId === userId;
+
+    if (!isHost) {
+        return res.status(403).json({ error: 'Only the host can delete the game' });
+    }
+
+    // Allow delete if cancelled OR if waiting (though cancel handles waiting logic usually)
+    deleteGame(id);
+    io.to(id).emit('gameTerminated', { reason: 'Game deleted by host' });
+
+    res.json({ success: true, id });
 });
 
 // =====================
@@ -608,6 +685,11 @@ app.put('/api/admin/config', adminAuth, (req, res) => {
     }
 
     saveConfig();
+    console.log('Config updated via admin panel:', {
+        gameName: serverConfig.gameName,
+        serverUrl: serverConfig.serverUrl,
+        enableProfiles: serverConfig.enableProfiles
+    });
     res.json({ success: true, config: serverConfig });
 });
 
@@ -891,6 +973,47 @@ app.get('/api/admin/games/:gameId/export', adminAuth, (req, res) => {
     res.json(game);
 });
 
+// Repair user-game associations
+// This scans all games and syncs them to users based on player.userId OR player.name
+app.post('/api/admin/repair-user-games', adminAuth, (req, res) => {
+    let repaired = 0;
+    const allGames = [...games.values()];
+    const allUsers = getAllUsers();
+
+    for (const game of allGames) {
+        for (const player of game.players) {
+            // First try by userId
+            if (player.userId) {
+                const user = getUser(player.userId);
+                if (user && !user.activeGames?.includes(game.id)) {
+                    addGameToUser(player.userId, game.id);
+                    repaired++;
+                    console.log(`Repaired by userId: Added game ${game.id} to user ${player.userId} (${user.name})`);
+                }
+            } else {
+                // Try to match by player name
+                const matchingUser = allUsers.find(u =>
+                    u.name.toLowerCase() === player.name.toLowerCase()
+                );
+                if (matchingUser) {
+                    // Link the player to the user
+                    player.userId = matchingUser.id;
+                    saveGame(game);
+
+                    // Add game to user if not already there
+                    if (!matchingUser.activeGames?.includes(game.id)) {
+                        addGameToUser(matchingUser.id, game.id);
+                        repaired++;
+                        console.log(`Repaired by name: Linked player "${player.name}" to user ${matchingUser.id} and added game ${game.id}`);
+                    }
+                }
+            }
+        }
+    }
+
+    res.json({ success: true, repairedCount: repaired });
+});
+
 // Import game backup
 app.post('/api/admin/games/import', adminAuth, (req, res) => {
     const gameData = req.body;
@@ -1057,19 +1180,68 @@ io.on('connection', (socket) => {
                 return safeCallback(callback, { success: false, error: 'Game not found' });
             }
 
-            // Check for duplicate username (case-insensitive)
-            const nameExists = game.players.some(p => p.name.toLowerCase() === playerName.toLowerCase());
-            if (nameExists) {
-                return safeCallback(callback, { success: false, error: 'Username already taken in this game' });
+            // 1. Try to find existing player by userId (best match)
+            let existingPlayer = null;
+            if (userId) {
+                existingPlayer = game.players.find(p => p.userId === userId);
             }
 
-            if (!currentPlayerId) {
-                currentPlayerId = uuidv4();
-                createPlayer(currentPlayerId, playerName);
+            // 2. If not found by userId, check for name match (legacy/anonymous)
+            if (!existingPlayer) {
+                existingPlayer = game.players.find(p => p.name.toLowerCase() === playerName.toLowerCase());
+            }
+
+            // Special case: Allow joining cancelled games to view the notice
+            if (game.status === 'cancelled') {
+                // Even if cancelled, we let them "join" the socket room to get the update
+                // But we don't need to add them as a player if they weren't one
+                currentGameId = gameId.toUpperCase();
+                socket.join(currentGameId);
+
+                return safeCallback(callback, {
+                    success: true,
+                    gameId,
+                    game: getGameStateForPlayer(game, currentPlayerId || (existingPlayer?.id))
+                });
+            }
+
+            // JOIN LOGIC
+            if (existingPlayer) {
+                // If found by name but userId doesn't match (and existing player has a userId), it's a conflict
+                if (existingPlayer.userId && userId && existingPlayer.userId !== userId) {
+                    return safeCallback(callback, { success: false, error: 'Username already taken by another user' });
+                }
+
+                // If found by name and neither has userId, or match is valid -> REJOIN
+                console.log(`Player rejoining game ${gameId}: ${existingPlayer.name} (${existingPlayer.id})`);
+
+                // Update name if authentication is strong (userId match) and name changed
+                if (userId && existingPlayer.userId === userId && existingPlayer.name !== playerName) {
+                    console.log(`Updating player name from ${existingPlayer.name} to ${playerName}`);
+                    existingPlayer.name = playerName;
+                }
+
+                // Associate userId if not already set (e.g. was anonymous, now logged in with same name)
+                if (userId && !existingPlayer.userId) {
+                    existingPlayer.userId = userId;
+                    addGameToUser(userId, gameId.toUpperCase());
+                }
+
+                currentPlayerId = existingPlayer.id;
                 playerSockets.set(currentPlayerId, socket);
-            }
+                existingPlayer.connected = true;
 
-            addPlayer(game, currentPlayerId, playerName);
+                // Ensure we don't try to add them again
+            } else {
+                // NEW PLAYER
+                if (!currentPlayerId) {
+                    currentPlayerId = uuidv4();
+                    createPlayer(currentPlayerId, playerName);
+                    playerSockets.set(currentPlayerId, socket);
+                }
+
+                addPlayer(game, currentPlayerId, playerName);
+            }
 
             // Link userId to this player in the game
             if (userId) {
@@ -1434,6 +1606,19 @@ function deleteGame(gameId) {
         games.delete(gameId);
         saveData(GAMES_FILE, Array.from(games.values()));
         deleted = true;
+    }
+
+    // Clean up users listing this game
+    const users = loadData(USERS_FILE);
+    let usersUpdated = false;
+    users.forEach(u => {
+        if (u.activeGames && u.activeGames.includes(gameId)) {
+            u.activeGames = u.activeGames.filter(g => g !== gameId);
+            usersUpdated = true;
+        }
+    });
+    if (usersUpdated) {
+        saveData(USERS_FILE, users);
     }
 
     // Remove from archive

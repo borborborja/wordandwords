@@ -626,4 +626,65 @@
 
 .mobile-scoreboard-container .scoreboard-info {
     display: none;
+}/* Game.css tweak */
+.mobile-scoreboard-container .mobile-tiles-btn {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    margin-left: auto;
+    /* Right justify */
+}
+
+.mobile-scoreboard-container .mobile-tiles-btn .tiles-count {
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.scoreboard-players {
+    /* Ensure it handles the new button properly */
+    align-items: center;
+}/* Cancelled Overlay */
+.cancelled-modal {
+    border-top: 5px solid #ef4444;
+}
+
+.cancelled-icon {
+    font-size: 3rem;
+    margin-bottom: var(--space-md);
+    animation: shake 0.5s ease-in-out;
+}
+
+.cancelled-message {
+    color: var(--text-secondary);
+    font-size: 1.1rem;
+    line-height: 1.5;
+}
+
+@keyframes shake {
+
+    0%,
+    100% {
+        transform: translateX(0);
+    }
+
+    10%,
+    30%,
+    50%,
+    70%,
+    90% {
+        transform: translateX(-5px);
+    }
+
+    20%,
+    40%,
+    60%,
+    80% {
+        transform: translateX(5px);
+    }
 }

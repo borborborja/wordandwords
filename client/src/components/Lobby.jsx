@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { usePWAInstall } from '../hooks/usePWAInstall';
+import UserMenu from './UserMenu';
 import UserDashboard from './UserDashboard';
 import './Lobby.css';
 import { LANGUAGES } from '../i18n';
@@ -23,7 +24,11 @@ export default function Lobby({
     onRecoverUser,
     onLogout,
     onRefreshUser,
+    onUpdateUser,
     onEnterGame,
+    onStartGame,
+    onCancelGame,
+    onDeleteGame,
     profilesEnabled = true
 }) {
     const { isInstallable, install } = usePWAInstall();
@@ -190,6 +195,9 @@ export default function Lobby({
         setLoginError(null);
         try {
             await onRecoverUser(loginCode.trim());
+            // Reset mode to show dashboard after successful login
+            setMode(null);
+            setLoginCode('');
         } catch (err) {
             setLoginError(err.message || 'Código inválido');
         }
@@ -202,10 +210,13 @@ export default function Lobby({
         <div className="lobby page">
             <div className="lobby-header">
                 {user && (
-                    <div className="user-pill glass" title={user.email || user.name}>
-                        <span className="user-icon">👤</span>
-                        <span className="user-name">{user.name}</span>
-                    </div>
+                    <UserMenu
+                        user={user}
+                        onLogout={onLogout}
+                        onUpdateUser={onUpdateUser}
+                        profilesEnabled={profilesEnabled}
+                        t={t}
+                    />
                 )}
                 <button
                     className="admin-btn"
@@ -236,11 +247,22 @@ export default function Lobby({
                 {showDashboard ? (
                     <UserDashboard
                         user={user}
-                        onEnterGame={onEnterGame}
+                        onEnterGame={(gameId) => {
+                            console.log('Lobby: onEnterGame called for:', gameId);
+                            try {
+                                return onEnterGame(gameId);
+                            } catch (err) {
+                                console.error('Lobby: onEnterGame error:', err);
+                            }
+                        }}
                         onCreateGame={() => setMode('create')}
                         onJoinGame={() => setMode('join')}
-                        onLogout={onLogout}
                         t={t}
+                        onStartGame={onStartGame}
+                        onCancelGame={onCancelGame}
+                        onDeleteGame={onDeleteGame}
+                        onRefreshUser={onRefreshUser}
+                        error={error} // Pass global error to dashboard
                     />
                 ) : (
                     <>
@@ -315,13 +337,20 @@ export default function Lobby({
                                                         <p>{t('lobby.linkSent') || 'Te hemos enviado un enlace para acceder'}</p>
                                                         <button
                                                             className="btn-link"
-                                                            style={{ marginTop: '1rem' }}
+                                                            style={{ marginTop: '1rem', marginRight: '1rem' }}
                                                             onClick={() => {
                                                                 setLoginSent(false);
                                                                 handleSendLoginLink();
                                                             }}
                                                         >
                                                             {t('lobby.resendEmail') || 'Reenviar email'}
+                                                        </button>
+                                                        <button
+                                                            className="btn-link text-muted"
+                                                            style={{ marginTop: '1rem' }}
+                                                            onClick={() => setLoginSent(false)}
+                                                        >
+                                                            {t('lobby.changeEmail') || 'Cambiar Email'}
                                                         </button>
                                                     </div>
                                                 ) : fallbackCode ? (
@@ -568,7 +597,8 @@ export default function Lobby({
                                         {loading ? 'Loading...' :
                                             mode === 'create' ? t('lobby.createGame') :
                                                 mode === 'join' ? t('lobby.joinGame') :
-                                                    (t('lobby.sendLink') || 'Enviar enlace')}
+                                                    loginType === 'code' ? (t('lobby.accessAccount') || 'Acceder') :
+                                                        (t('lobby.sendLink') || 'Enviar enlace')}
                                     </button>
                                 )}
                             </div>

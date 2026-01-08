@@ -297,7 +297,7 @@ export default function Settings({ isOpen, onClose, t, uiLanguage, onUiLanguageC
                                     <button
                                         className="settings-btn-action"
                                         style={{
-                                            background: 'var(--primary)',
+                                            background: emailValidating ? '#718096' : 'var(--primary)',
                                             border: 'none',
                                             borderRadius: '8px',
                                             padding: '8px 12px',
@@ -306,10 +306,17 @@ export default function Settings({ isOpen, onClose, t, uiLanguage, onUiLanguageC
                                             fontSize: '0.8rem',
                                             whiteSpace: 'nowrap'
                                         }}
-                                        onClick={handleLinkEmail}
-                                        disabled={emailValidating}
+                                        onClick={() => {
+                                            if (emailValidating) {
+                                                setEmailValidating(false);
+                                                setEmailError('');
+                                            } else {
+                                                handleLinkEmail();
+                                            }
+                                        }}
+                                        disabled={false}
                                     >
-                                        {emailValidating ? '...' : (t('lobby.validateEmail') || 'Validar')}
+                                        {emailValidating ? (t('settings.changeEmail') || 'Cambiar') : (t('lobby.validateEmail') || 'Validar')}
                                     </button>
                                 )}
                                 {emailValidated && (

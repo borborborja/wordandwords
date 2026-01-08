@@ -347,14 +347,7 @@ export default function Game({
                             </div>
                         </div>
 
-                        {/* Tile Bag Info */}
-                        {game.tileBagCount !== undefined && (
-                            <TileBagInfo
-                                count={game.tileBagCount}
-                                breakdown={game.tileBagBreakdown}
-                                t={t}
-                            />
-                        )}
+
                     </div>
                 </div>
             </main>
@@ -383,6 +376,7 @@ export default function Game({
                         tileBagCount={game.tileBagCount}
                         t={t}
                         compact={true}
+                        showMobileTiles={true}
                     />
                 </div>
 
@@ -448,6 +442,22 @@ export default function Game({
                     )}
                 </div>
             </footer>
+
+            {/* Cancelled Overlay */}
+            {game?.status === 'cancelled' && (
+                <div className="modal-overlay" style={{ zIndex: 2000, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(5px)' }}>
+                    <div className="modal glass animate-fade-in cancelled-modal">
+                        <div className="cancelled-icon">🚫</div>
+                        <h2>{t('game.cancelled') || 'Partida Cancelada'}</h2>
+                        <p className="cancelled-message">
+                            {t('game.cancelledBy', { name: game.cancelledBy || 'Host' }) || `El anfitrión ${game.cancelledBy || ''} ha cancelado la partida.`}
+                        </p>
+                        <button className="btn btn-primary" onClick={onLeave} style={{ marginTop: '1.5rem' }}>
+                            {t('common.back') || 'Volver'}
+                        </button>
+                    </div>
+                </div>
+            )}
 
             {/* Game Over Modal */}
             {game?.status === 'finished' && (

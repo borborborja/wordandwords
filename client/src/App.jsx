@@ -341,7 +341,10 @@ export default function App() {
                 onRefreshUser={refreshUser}
                 onUpdateUser={updateUserProfile}
                 profilesEnabled={profilesEnabled}
-                onEnterGame={(gameId) => gameState.joinGame(gameId, user?.name)}
+                onEnterGame={(gameId) => gameState.joinGame(gameId, user?.name, user?.id)}
+                onStartGame={gameState.startGame}
+                onCancelGame={(gameId) => gameState.cancelGame(gameId, user?.id)}
+                onDeleteGame={(gameId) => gameState.deleteGame(gameId, user?.id)}
             />
         );
     };

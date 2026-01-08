@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 
 export function useGame(socket) {
     const [game, setGame] = useState(null);
@@ -6,6 +6,11 @@ export function useGame(socket) {
     const [playerName, setPlayerName] = useState(() => localStorage.getItem('playerName') || '');
     const [error, setError] = useState(null);
     const [loading, setLoading] = useState(false);
+
+    // Use ref to store callback without triggering re-renders or dependency loops
+    const gameRef = React.useRef({
+        onRefreshUser: null
+    });
 
     // Listen for game updates
     useEffect(() => {
@@ -101,9 +106,15 @@ export function useGame(socket) {
             localStorage.setItem('playerName', name);
             localStorage.setItem('gameId', response.gameId);
             setPlayerName(name);
+
+            // Trigger global user refresh to show new game in dashboard
+            if (gameRef.current.onRefreshUser) gameRef.current.onRefreshUser();
+
             return response.gameId;
         } catch (err) {
             setError(err.message);
+            // Also refresh in case of partial failure
+            if (gameRef.current.onRefreshUser) gameRef.current.onRefreshUser();
             throw err;
         } finally {
             setLoading(false);
@@ -111,11 +122,13 @@ export function useGame(socket) {
     }, [socket]);
 
     const joinGame = useCallback(async (gameId, name, userId = null) => {
+        console.log('CLIENT: joinGame called with:', { gameId, name, userId });
         setLoading(true);
         setError(null);
 
         try {
             const response = await socket.emit('joinGame', { gameId, playerName: name, userId });
+            console.log('CLIENT: joinGame response:', response);
             setGame(response.game);
             const player = response.game.players.find(p => p.name === name);
             if (player) {
@@ -225,6 +238,48 @@ export function useGame(socket) {
         setGame(null);
     }, []);
 
+    const cancelGame = useCallback(async (gameId, userId) => {
+        setLoading(true);
+        try {
+            const res = await fetch(`/api/games/${gameId}/cancel`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId })
+            });
+            if (!res.ok) {
+                const data = await res.json();
+                throw new Error(data.error || 'Failed to cancel game');
+            }
+            return await res.json();
+        } catch (err) {
+            setError(err.message);
+            throw err;
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    const deleteGame = useCallback(async (gameId, userId) => {
+        setLoading(true);
+        try {
+            const res = await fetch(`/api/games/${gameId}`, {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId })
+            });
+            if (!res.ok) {
+                const data = await res.json();
+                throw new Error(data.error || 'Failed to delete game');
+            }
+            return await res.json();
+        } catch (err) {
+            setError(err.message);
+            throw err;
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
     const currentPlayer = game?.players?.find(p => p.id === playerId);
     const isMyTurn = game?.status === 'playing' &&
         game?.players[game?.currentPlayerIndex]?.id === playerId;
@@ -246,7 +301,10 @@ export function useGame(socket) {
         sendMessage,
         rejoinGame,
         leaveGame,
+        cancelGame,
+        deleteGame,
         setPlayerName,
+        setRefreshUserCallback: (cb) => { gameRef.current.onRefreshUser = cb; },
         clearError: () => setError(null)
     };
 }

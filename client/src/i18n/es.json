@@ -35,12 +35,14 @@
         "loginWithEmail": "Usar Email",
         "loginWithCode": "Usar Código",
         "sendLink": "Enviar enlace",
+        "accessAccount": "Acceder",
         "checkEmail": "¡Revisa tu email!",
         "linkSent": "Te hemos enviado un enlace para acceder",
         "smtpNotConfigured": "Email no disponible. Usa este código:",
         "validateEmail": "Validar",
         "resend": "reenviar",
-        "resendEmail": "Reenviar email"
+        "resendEmail": "Reenviar email",
+        "changeEmail": "Cambiar Email"
     },
     "common": {
         "optional": "opcional",
@@ -50,8 +52,20 @@
         "myGames": "Mis Partidas",
         "noGames": "No tienes partidas activas",
         "waitingTurn": "Esperando...",
+        "waitingPlayers": "Esperando jugadores...",
+        "readyToStart": "Listo para empezar",
+        "gameCode": "Código",
+        "settings": "Opciones",
+        "viewRoom": "Ver sala",
+        "play": "Jugar",
+        "viewResult": "Ver resultado",
         "recoveryHint": "Guarda este código para recuperar tu perfil desde otro dispositivo",
-        "logout": "Cerrar Sesión"
+        "logout": "Cerrar Sesión",
+        "noEmail": "Sin email",
+        "recoveryCode": "Código de Recuperación",
+        "showCode": "Mostrar código",
+        "changeEmail": "Cambiar Email",
+        "linkEmail": "Vincular Email"
     },
     "game": {
         "yourTurn": "Tu turno",
@@ -100,7 +114,8 @@
         "profileCodeDesc": "Usa este código para acceder desde otro dispositivo",
         "linkEmail": "Vincular Email",
         "linkEmailDesc": "Añade un email para recuperar tu cuenta fácilmente",
-        "enterEmailToLink": "Email para vincular"
+        "enterEmailToLink": "Email para vincular",
+        "changeEmail": "Cambiar"
     },
     "sidebar": {
         "chat": "Chat",
@@ -129,5 +144,10 @@
         "gameFull": "La partida está llena",
         "invalidMove": "Movimiento inválido",
         "notYourTurn": "No es tu turno"
+    },
+    "admin": {
+        "deleteUser": "Borrar Usuario",
+        "confirmDeleteUser": "¿Estás seguro de que quieres borrar este usuario? Esta acción no se puede deshacer.",
+        "recoveryCode": "Código de Recuperación"
     }
 }

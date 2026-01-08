@@ -5,7 +5,8 @@ export default function Scoreboard({
     currentPlayerIndex = 0,
     tileBagCount = 0,
     playerId,
-    t
+    t,
+    showMobileTiles = false
 }) {
     return (
         <div className="scoreboard glass">
@@ -34,6 +35,13 @@ export default function Scoreboard({
                         <span className="player-score">{player.score}</span>
                     </div>
                 ))}
+
+                {showMobileTiles && (
+                    <div className="mobile-tiles-btn" title={t('game.tilesLeft')}>
+                        <span className="tiles-icon">🔠</span>
+                        <span className="tiles-count">{tileBagCount}</span>
+                    </div>
+                )}
             </div>
 
             <div className="scoreboard-info">
