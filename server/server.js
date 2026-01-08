@@ -510,9 +510,15 @@ const SMTP_ENV = {
     isEnvConfigured: !!(process.env.SMTP_HOST && process.env.SMTP_USER)
 };
 
+// Server URL from environment
+const SERVER_URL_ENV = {
+    url: process.env.SERVER_URL || '',
+    isSet: !!process.env.SERVER_URL
+};
+
 let serverConfig = {
     gameName: process.env.GAME_NAME || 'WordAndWords',
-    serverUrl: '', // To be set by admin
+    serverUrl: process.env.SERVER_URL || '', // Priority to env var
     enableProfiles: true, // Enable persistent user profiles
     smtp: {
         host: '',
@@ -575,7 +581,8 @@ app.post('/api/admin/login', (req, res) => {
 app.get('/api/admin/config', adminAuth, (req, res) => {
     res.json({
         ...serverConfig,
-        smtpEnv: SMTP_ENV // Include env-based SMTP config (read-only info)
+        smtpEnv: SMTP_ENV, // Include env-based SMTP config (read-only info)
+        serverUrlEnv: SERVER_URL_ENV // Include env-based Server URL config
     });
 });
 
@@ -583,7 +590,12 @@ app.get('/api/admin/config', adminAuth, (req, res) => {
 app.put('/api/admin/config', adminAuth, (req, res) => {
     const { gameName, serverUrl, enableProfiles, smtp } = req.body;
     if (gameName) serverConfig.gameName = gameName;
-    if (serverUrl !== undefined) serverConfig.serverUrl = serverUrl;
+
+    // Only update if not set via environment
+    if (serverUrl !== undefined && !SERVER_URL_ENV.isSet) {
+        serverConfig.serverUrl = serverUrl;
+    }
+
     if (enableProfiles !== undefined) serverConfig.enableProfiles = enableProfiles;
 
     // Only update SMTP if not configured via env

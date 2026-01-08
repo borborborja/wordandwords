@@ -947,7 +947,18 @@ function ConfigTab({ config, setConfig, token }) {
                 </div>
                 <div className="form-row">
                     <label>URL Pública (para enlaces):</label>
-                    <input value={serverUrl} onChange={e => setServerUrl(e.target.value)} className="input" placeholder="https://mi-juego.com" />
+                    {config.serverUrlEnv?.isSet && (
+                        <div className="env-notice mb-1">
+                            ✅ URL configurada via variable de entorno (solo lectura)
+                        </div>
+                    )}
+                    <input
+                        value={config.serverUrlEnv?.isSet ? config.serverUrlEnv.url : serverUrl}
+                        onChange={e => setServerUrl(e.target.value)}
+                        className="input"
+                        placeholder="https://mi-juego.com"
+                        disabled={config.serverUrlEnv?.isSet}
+                    />
                 </div>
                 <button className="btn btn-primary mt-2" onClick={handleSaveConfig} disabled={savingConfig}>
                     {savingConfig ? 'Guardando...' : 'Guardar Configuración'}
