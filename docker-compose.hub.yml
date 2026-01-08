@@ -1,6 +1,6 @@
 services:
   wordandwords:
-    image: borborbor/wordandwords:latest
+    image: borborbor/wordandwords:main
     container_name: wordandwords
     restart: unless-stopped
     ports:
@@ -12,6 +12,12 @@ services:
       - NODE_ENV=production
       - DATA_DIR=/app/data
       - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin123}
+      # SMTP Configuration
+      - SMTP_HOST=${SMTP_HOST:-}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER=${SMTP_USER:-}
+      - SMTP_PASS=${SMTP_PASS:-}
+      - SMTP_FROM=${SMTP_FROM:-}
     healthcheck:
       test: [ "CMD", "wget", "-q", "--spider", "http://localhost:80" ]
       interval: 30s
