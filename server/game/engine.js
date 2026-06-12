@@ -43,6 +43,7 @@ export function createGame(id, language, creatorId, creatorName, options = {}) {
         showTileBagCount: options.showTileBagCount !== false, // default true
         showTileBagBreakdown: options.showTileBagBreakdown || false, // default false
         board: createEmptyBoard(),
+        blankCells: {}, // "row,col" -> true for cells filled by a blank tile (score 0)
         tileBag: remaining,
         players: [{
             id: creatorId,
@@ -105,7 +106,7 @@ export function startGame(game) {
 }
 
 // Calculate score for a move
-export function calculateScore(placedTiles, board, language) {
+export function calculateScore(placedTiles, board, language, blankCells = {}) {
     let totalScore = 0;
     const wordsFormed = [];
 
@@ -124,13 +125,13 @@ export function calculateScore(placedTiles, board, language) {
 
     // Score main word
     if (isHorizontal) {
-        const word = scoreHorizontalWord(placedTiles[0].row, Math.min(...cols), tempBoard, placedTiles, language);
+        const word = scoreHorizontalWord(placedTiles[0].row, Math.min(...cols), tempBoard, placedTiles, language, blankCells);
         if (word.text.length > 1) {
             totalScore += word.score;
             wordsFormed.push(word);
         }
     } else {
-        const word = scoreVerticalWord(Math.min(...rows), placedTiles[0].col, tempBoard, placedTiles, language);
+        const word = scoreVerticalWord(Math.min(...rows), placedTiles[0].col, tempBoard, placedTiles, language, blankCells);
         if (word.text.length > 1) {
             totalScore += word.score;
             wordsFormed.push(word);
@@ -140,13 +141,13 @@ export function calculateScore(placedTiles, board, language) {
     // Score cross words
     for (const tile of placedTiles) {
         if (isHorizontal) {
-            const crossWord = scoreVerticalWord(tile.row, tile.col, tempBoard, [tile], language);
+            const crossWord = scoreVerticalWord(tile.row, tile.col, tempBoard, [tile], language, blankCells);
             if (crossWord.text.length > 1) {
                 totalScore += crossWord.score;
                 wordsFormed.push(crossWord);
             }
         } else {
-            const crossWord = scoreHorizontalWord(tile.row, tile.col, tempBoard, [tile], language);
+            const crossWord = scoreHorizontalWord(tile.row, tile.col, tempBoard, [tile], language, blankCells);
             if (crossWord.text.length > 1) {
                 totalScore += crossWord.score;
                 wordsFormed.push(crossWord);
@@ -162,7 +163,7 @@ export function calculateScore(placedTiles, board, language) {
     return { score: totalScore, words: wordsFormed };
 }
 
-function scoreHorizontalWord(row, startCol, board, placedTiles, language) {
+function scoreHorizontalWord(row, startCol, board, placedTiles, language, blankCells = {}) {
     let col = startCol;
     while (col > 0 && board[row][col - 1]) col--;
 
@@ -172,7 +173,8 @@ function scoreHorizontalWord(row, startCol, board, placedTiles, language) {
 
     while (col < 15 && board[row][col]) {
         const letter = board[row][col];
-        let letterScore = getLetterValue(letter, language);
+        // Blank tiles always score 0, regardless of the letter they represent.
+        let letterScore = blankCells[`${row},${col}`] ? 0 : getLetterValue(letter, language);
         const isNewTile = placedTiles.some(t => t.row === row && t.col === col);
 
         if (isNewTile) {
@@ -191,7 +193,7 @@ function scoreHorizontalWord(row, startCol, board, placedTiles, language) {
     return { text: word, score: score * wordMultiplier };
 }
 
-function scoreVerticalWord(startRow, col, board, placedTiles, language) {
+function scoreVerticalWord(startRow, col, board, placedTiles, language, blankCells = {}) {
     let row = startRow;
     while (row > 0 && board[row - 1][col]) row--;
 
@@ -201,7 +203,8 @@ function scoreVerticalWord(startRow, col, board, placedTiles, language) {
 
     while (row < 15 && board[row][col]) {
         const letter = board[row][col];
-        let letterScore = getLetterValue(letter, language);
+        // Blank tiles always score 0, regardless of the letter they represent.
+        let letterScore = blankCells[`${row},${col}`] ? 0 : getLetterValue(letter, language);
         const isNewTile = placedTiles.some(t => t.row === row && t.col === col);
 
         if (isNewTile) {
@@ -231,10 +234,28 @@ export function makeMove(game, playerId, placedTiles) {
         throw new Error('Not your turn');
     }
 
-    // Validate tile placement
-    const validation = validateTilePlacement(placedTiles, game.board, game.moveHistory.length === 0);
+    // Validate tile placement.
+    // "First move" = the board is still empty. We must NOT rely on moveHistory.length,
+    // because passes/exchanges/penalties also push entries there, which would wrongly
+    // force the first real word to "connect" to a non-existent tile and deadlock the game.
+    const boardIsEmpty = game.board.every(row => row.every(cell => !cell));
+    const validation = validateTilePlacement(placedTiles, game.board, boardIsEmpty);
     if (!validation.valid) {
         throw new Error(validation.error);
+    }
+
+    // Validate that every placed tile actually exists in the player's rack.
+    // Blank tiles (isBlank) are matched against rack tiles with letter === ''.
+    // This prevents a tampered client from playing letters it does not hold.
+    const rackCopy = currentPlayer.tiles.map(t => ({ ...t }));
+    for (const placed of placedTiles) {
+        const idx = placed.isBlank
+            ? rackCopy.findIndex(t => t && t.isBlank)
+            : rackCopy.findIndex(t => t && !t.isBlank && t.letter === placed.letter);
+        if (idx === -1) {
+            throw new Error('You do not have the required tiles');
+        }
+        rackCopy[idx] = null; // consume so duplicates are checked correctly
     }
 
     // Validate words
@@ -274,18 +295,27 @@ export function makeMove(game, playerId, placedTiles) {
                 });
             }
 
-            // Advance turn
+            // Advance turn (reset the turn clock so the next player gets full time)
             game.currentPlayerIndex = (game.currentPlayerIndex + 1) % game.players.length;
             game.lastActivity = Date.now();
+            game.turnStartTime = Date.now();
 
             return { score: 0, words: [], penalty: true, invalidWords: wordValidation.invalidWords.map(w => w.text) };
         }
     }
 
-    // Calculate score
-    const { score, words } = calculateScore(placedTiles, game.board, game.language);
+    // Record which new cells were filled by a blank tile (they score 0)
+    if (!game.blankCells) game.blankCells = {};
+    for (const tile of placedTiles) {
+        if (tile.isBlank) {
+            game.blankCells[`${tile.row},${tile.col}`] = true;
+        }
+    }
 
-    // Update board
+    // Calculate score (blankCells now includes this move's blanks)
+    const { score, words } = calculateScore(placedTiles, game.board, game.language, game.blankCells);
+
+    // Update board (blank tiles store the chosen letter so words read correctly)
     for (const tile of placedTiles) {
         game.board[tile.row][tile.col] = tile.letter;
     }
@@ -293,10 +323,12 @@ export function makeMove(game, playerId, placedTiles) {
     // Update player score and tiles
     currentPlayer.score += score;
 
-    // Remove used tiles from player's rack
-    const usedLetters = placedTiles.map(t => t.letter);
-    for (const letter of usedLetters) {
-        const idx = currentPlayer.tiles.findIndex(t => t.letter === letter);
+    // Remove used tiles from player's rack.
+    // Blank tiles in the rack have letter === ''; the placed tile carries the chosen letter.
+    for (const placed of placedTiles) {
+        const idx = placed.isBlank
+            ? currentPlayer.tiles.findIndex(t => t.isBlank)
+            : currentPlayer.tiles.findIndex(t => !t.isBlank && t.letter === placed.letter);
         if (idx !== -1) {
             currentPlayer.tiles.splice(idx, 1);
         }
@@ -413,28 +445,35 @@ export function exchangeTiles(game, playerId, tilesToExchange) {
         throw new Error('Not enough tiles in bag');
     }
 
-    // 1. First, draw NEW tiles from the bag (before returning old ones)
+    // 1. Validate the player holds every requested tile BEFORE touching the bag,
+    //    so a bad request can never corrupt the bag or the rack. ('' = blank tile)
+    const indices = [];
+    const rackCopy = currentPlayer.tiles.map(t => ({ ...t }));
+    for (const letter of tilesToExchange) {
+        const idx = rackCopy.findIndex(t => t && t.letter === letter);
+        if (idx === -1) {
+            throw new Error(`Tile not found: ${letter || 'blank'}`);
+        }
+        rackCopy[idx] = null;
+        indices.push(idx);
+    }
+
+    // 2. Draw NEW tiles from the bag (before returning old ones)
     const { drawn, remaining } = drawTiles(game.tileBag, tilesToExchange.length);
     game.tileBag = remaining;
 
-    // 2. Remove the tiles to exchange from player's rack
-    const removedTiles = [];
-    for (const letter of tilesToExchange) {
-        const idx = currentPlayer.tiles.findIndex(t => t.letter === letter);
-        if (idx === -1) {
-            throw new Error(`Tile not found: ${letter}`);
-        }
-        const [removed] = currentPlayer.tiles.splice(idx, 1);
-        removedTiles.push(removed);
-    }
+    // 3. Remove the exchanged tiles from the player's rack (by validated index)
+    const removedTiles = indices
+        .sort((a, b) => b - a) // splice high-to-low to keep indices valid
+        .map(idx => currentPlayer.tiles.splice(idx, 1)[0]);
 
-    // 3. Add the new tiles to player's rack
+    // 4. Add the new tiles to player's rack
     currentPlayer.tiles.push(...drawn);
 
-    // 4. Return the discarded tiles to the bag
+    // 5. Return the discarded tiles to the bag
     game.tileBag.push(...removedTiles);
 
-    // 5. Shuffle the bag
+    // 6. Shuffle the bag
     for (let i = game.tileBag.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [game.tileBag[i], game.tileBag[j]] = [game.tileBag[j], game.tileBag[i]];
@@ -498,8 +537,12 @@ function endGame(game, finishingPlayerId = null) {
         }
     }
 
-    // Determine winner
-    game.winner = game.players.reduce((max, p) => p.score > max.score ? p : max, game.players[0]);
+    // Determine winner (flag ties so the UI can show a draw instead of a false winner)
+    const topScore = Math.max(...game.players.map(p => p.score));
+    const leaders = game.players.filter(p => p.score === topScore);
+    game.winner = leaders[0];
+    game.isTie = leaders.length > 1;
+    game.finishedAt = Date.now();
 }
 
 // Validate tile placement rules
@@ -580,11 +623,28 @@ export function getGameStateForPlayer(game, playerId) {
         }
     }
 
+    // While the game is in progress, redact other players' racks from the history
+    // snapshots too (they embed live tiles). Once finished, reveal everything.
+    const redactSnapshots = (logs) => {
+        if (!logs) return logs;
+        if (game.status === 'finished' || game.status === 'archived') return logs;
+        return logs.map(log => {
+            if (!log.racksSnapshot) return log;
+            return {
+                ...log,
+                racksSnapshot: log.racksSnapshot.map(r =>
+                    r.id === playerId ? r : { id: r.id, name: r.name, score: r.score, tiles: r.tiles?.map(() => ({ hidden: true })) }
+                )
+            };
+        });
+    };
+
     return {
         ...game,
         tileBag: undefined, // Hide tile bag
         tileBagCount: game.showTileBagCount ? game.tileBag.length : undefined,
         tileBagBreakdown,
+        historyLogs: redactSnapshots(game.historyLogs),
         players: game.players.map(p => ({
             ...p,
             tiles: p.id === playerId ? p.tiles : p.tiles.map(() => ({ hidden: true }))

@@ -87,7 +87,11 @@ export function useGame(socket) {
         setLoading(true);
         setError(null);
 
-        const { strictMode = false, timeLimit = null, enableChat = true, enableHistory = true, qAsQu = false } = options;
+        const {
+            strictMode = false, timeLimit = null, enableChat = true,
+            enableHistory = true, qAsQu = false,
+            showTileBagCount = true, showTileBagBreakdown = false
+        } = options;
 
         try {
             const response = await socket.emit('createGame', {
@@ -98,6 +102,8 @@ export function useGame(socket) {
                 enableChat,
                 enableHistory,
                 qAsQu,
+                showTileBagCount,
+                showTileBagBreakdown,
                 userId
             });
             setGame(response.game);
@@ -130,10 +136,11 @@ export function useGame(socket) {
             const response = await socket.emit('joinGame', { gameId, playerName: name, userId });
             console.log('CLIENT: joinGame response:', response);
             setGame(response.game);
-            const player = response.game.players.find(p => p.name === name);
-            if (player) {
-                setPlayerId(player.id);
-                localStorage.setItem('playerId', player.id);
+            // The server tells us exactly which player we are (robust against duplicate names)
+            const myId = response.playerId || response.game.players.find(p => p.name === name)?.id;
+            if (myId) {
+                setPlayerId(myId);
+                localStorage.setItem('playerId', myId);
             }
             localStorage.setItem('playerName', name);
             localStorage.setItem('gameId', gameId);
@@ -193,22 +200,23 @@ export function useGame(socket) {
         }
     }, [socket]);
 
-    const exchangeTiles = useCallback((tiles) => {
-        return new Promise((resolve, reject) => {
-            socket.emit('exchangeTiles', { tiles }, (response) => {
-                if (response.success) resolve();
-                else reject(new Error(response.error));
-            });
-        });
+    const exchangeTiles = useCallback(async (tiles) => {
+        setLoading(true);
+        setError(null);
+        try {
+            // socket.emit (from useSocket) returns a Promise resolved by the server ack.
+            // Do NOT pass a 3rd callback arg — the hook ignores it, leaving the promise hung.
+            await socket.emit('exchangeTiles', { tiles });
+        } catch (err) {
+            setError(err.message);
+            throw err;
+        } finally {
+            setLoading(false);
+        }
     }, [socket]);
 
-    const sendMessage = useCallback((text) => {
-        return new Promise((resolve, reject) => {
-            socket.emit('sendMessage', { text }, (response) => {
-                if (response.success) resolve();
-                else reject(new Error(response.error));
-            });
-        });
+    const sendMessage = useCallback(async (text) => {
+        await socket.emit('sendMessage', { text });
     }, [socket]);
 
     const rejoinGame = useCallback(async (userId = null) => {

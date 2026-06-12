@@ -48,6 +48,28 @@ export function getDictionaryWords(language) {
     return dict ? Array.from(dict) : [];
 }
 
+// Add words to a dictionary file (and in-memory set) without losing existing ones
+export function addWordsToDictionary(language, newWords) {
+    const filePath = path.join(__dirname, '..', 'dictionaries', `${language}.txt`);
+    const dict = dictionaries.get(language) || new Set();
+
+    let added = 0;
+    for (const raw of newWords) {
+        const word = String(raw).trim().toUpperCase();
+        if (word && !dict.has(word)) {
+            dict.add(word);
+            added++;
+        }
+    }
+
+    dictionaries.set(language, dict);
+
+    // Persist the full set back to disk
+    fs.writeFileSync(filePath, Array.from(dict).join('\n'), 'utf-8');
+
+    return { added, total: dict.size };
+}
+
 // Check if a word is valid in a specific language
 export function isValidWord(word, language) {
     const dictionary = dictionaries.get(language);

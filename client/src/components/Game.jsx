@@ -40,6 +40,9 @@ export default function Game({
     const [showSettings, setShowSettings] = useState(false);
     const [isChatOpen, setIsChatOpen] = useState(false);
     const [viewingSnapshot, setViewingSnapshot] = useState(null);
+    // When a blank (comodín) is placed we ask the player which letter it represents
+    const [pendingBlank, setPendingBlank] = useState(null); // { row, col, rackIndex }
+    const [blankLetter, setBlankLetter] = useState('');
 
     // Track previous turn state for notifications
     const wasMyTurnRef = useRef(isMyTurn);
@@ -68,15 +71,12 @@ export default function Game({
             const elapsed = (Date.now() - turnStartTime) / 1000;
             const remaining = Math.max(0, Math.ceil(timeLimit - elapsed));
             setTimeLeft(remaining);
-
-            if (remaining === 0 && isMyTurnNow) {
-                // Auto pass
-                onPass();
-            }
+            // NOTE: auto-pass is handled by the SERVER (server-authoritative timer).
+            // The client only displays the countdown to avoid double-pass races.
         }, 1000);
 
         return () => clearInterval(interval);
-    }, [timeLimit, turnStartTime, isMyTurnNow, onPass]);
+    }, [timeLimit, turnStartTime]);
 
     // Format time
     const formatTime = (seconds) => {
@@ -110,6 +110,15 @@ export default function Game({
         if (placedTiles.some(t => t.row === row && t.col === col)) return;
 
         const tile = currentPlayer.tiles[selectedTileIndex];
+
+        // Blank tile: ask which letter it represents before placing it
+        if (tile.isBlank) {
+            setPendingBlank({ row, col, rackIndex: selectedTileIndex });
+            setBlankLetter('');
+            setSelectedTileIndex(null);
+            return;
+        }
+
         soundManager.playClick();
         setPlacedTiles(prev => [...prev, {
             row,
@@ -139,6 +148,13 @@ export default function Game({
 
         if (rackIndex === -1) return;
 
+        // Blank tile dropped: ask which letter it represents before placing it
+        if (tileData.isBlank || currentPlayer.tiles[rackIndex]?.isBlank) {
+            setPendingBlank({ row, col, rackIndex });
+            setBlankLetter('');
+            return;
+        }
+
         setPlacedTiles(prev => [...prev, {
             row,
             col,
@@ -148,12 +164,29 @@ export default function Game({
         }]);
     }, [isMyTurn, game?.board, currentPlayer?.tiles, placedTiles]);
 
+    // Confirm the letter chosen for a blank tile
+    const confirmBlank = useCallback(() => {
+        const letter = blankLetter.trim().toUpperCase();
+        if (!letter || !pendingBlank) return;
+        soundManager.playClick();
+        setPlacedTiles(prev => [...prev, {
+            row: pendingBlank.row,
+            col: pendingBlank.col,
+            letter,
+            value: 0,        // blanks always score 0
+            isBlank: true,
+            rackIndex: pendingBlank.rackIndex
+        }]);
+        setPendingBlank(null);
+        setBlankLetter('');
+    }, [blankLetter, pendingBlank]);
+
     const handleSubmit = async () => {
         if (placedTiles.length === 0) return;
 
         try {
-            const result = await onMakeMove(placedTiles.map(({ row, col, letter, value }) => ({
-                row, col, letter, value
+            const result = await onMakeMove(placedTiles.map(({ row, col, letter, value, isBlank }) => ({
+                row, col, letter, value, isBlank: !!isBlank
             })));
 
             if (result.penalty) {
@@ -176,6 +209,8 @@ export default function Game({
     const handleCancelPlacement = () => {
         setPlacedTiles([]);
         setSelectedTileIndex(null);
+        setPendingBlank(null);
+        setBlankLetter('');
     };
 
     const handlePass = async () => {
@@ -466,13 +501,23 @@ export default function Game({
                         <h2>{t('game.gameOver')}</h2>
 
                         <div className="winner-section">
-                            <span className="winner-crown">👑</span>
-                            <h3>{t('game.winner')}: {game?.winner?.name}</h3>
-                            <p className="winner-score">{game?.winner?.score} {t('game.points')}</p>
+                            {game?.isTie ? (
+                                <>
+                                    <span className="winner-crown">🤝</span>
+                                    <h3>{t('game.tie') || 'Empate'}</h3>
+                                    <p className="winner-score">{game?.winner?.score} {t('game.points')}</p>
+                                </>
+                            ) : (
+                                <>
+                                    <span className="winner-crown">👑</span>
+                                    <h3>{t('game.winner')}: {game?.winner?.name}</h3>
+                                    <p className="winner-score">{game?.winner?.score} {t('game.points')}</p>
+                                </>
+                            )}
                         </div>
 
                         <div className="final-scores">
-                            {game?.players?.sort((a, b) => b.score - a.score).map((player, idx) => (
+                            {[...(game?.players || [])].sort((a, b) => b.score - a.score).map((player, idx) => (
                                 <div key={player.id} className="final-score-item">
                                     <span className="rank">#{idx + 1}</span>
                                     <span className="name">{player.name}</span>
@@ -506,6 +551,38 @@ export default function Game({
                 </div>
             )}
             {renderSnapshotModal()}
+
+            {/* Blank tile letter chooser */}
+            {pendingBlank && (
+                <div className="modal-overlay" style={{ zIndex: 3500 }} onClick={() => { setPendingBlank(null); setBlankLetter(''); }}>
+                    <div className="modal glass animate-fade-in" onClick={e => e.stopPropagation()} style={{ width: '90%', maxWidth: '360px', textAlign: 'center' }}>
+                        <h3 style={{ marginBottom: '0.5rem' }}>🃏 {t('game.blankLetter') || 'Letra del comodín'}</h3>
+                        <p style={{ color: 'var(--text-secondary)', marginBottom: '1rem', fontSize: '0.9rem' }}>
+                            {t('game.blankLetterHint') || 'Escribe la letra que representa esta ficha en blanco (vale 0 puntos).'}
+                        </p>
+                        <input
+                            autoFocus
+                            type="text"
+                            className="input code-input"
+                            value={blankLetter}
+                            onChange={(e) => setBlankLetter(e.target.value.toUpperCase())}
+                            onKeyDown={(e) => { if (e.key === 'Enter') confirmBlank(); }}
+                            placeholder="A"
+                            maxLength={3}
+                            style={{ textAlign: 'center', fontSize: '1.5rem', textTransform: 'uppercase' }}
+                        />
+                        <div className="game-actions" style={{ marginTop: '1rem', justifyContent: 'center' }}>
+                            <button className="btn btn-primary" onClick={confirmBlank} disabled={!blankLetter.trim()}>
+                                {t('common.confirm') || 'Confirmar'}
+                            </button>
+                            <button className="btn btn-secondary" onClick={() => { setPendingBlank(null); setBlankLetter(''); }}>
+                                {t('game.cancel') || 'Cancelar'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Settings Modal */}
             <Settings
                 isOpen={showSettings}
