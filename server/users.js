@@ -146,6 +146,21 @@ export function getUserGames(userId) {
 }
 
 /**
+ * Remove a game from EVERY user's active games list (used when a game is deleted)
+ */
+export function removeGameFromAllUsers(gameId) {
+    let changed = false;
+    for (const user of Object.values(usersCache)) {
+        if (user.activeGames && user.activeGames.includes(gameId)) {
+            user.activeGames = user.activeGames.filter(g => g !== gameId);
+            changed = true;
+        }
+    }
+    if (changed) saveUsers(usersCache);
+    return changed;
+}
+
+/**
  * Update user profile (name, email)
  */
 export function updateUser(userId, updates) {

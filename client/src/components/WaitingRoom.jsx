@@ -2,8 +2,16 @@ import { useState, useRef, useEffect } from 'react';
 import './WaitingRoom.css';
 import { urlBase64ToUint8Array, registerServiceWorker } from '../utils/push';
 
-// Hardcoded public key for immediate functionality (matches server default)
-const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY || 'BO6d-kaZ3rbflknBQKNGcUAz84HHZRKunuPhE0-gendQd_zovyZ3lO10LUxSq2jjQph5rJCVy_vmifSCCeki58s';
+const API_BASE = import.meta.env.PROD ? '' : 'http://localhost:3001';
+
+// Fetch the server's CURRENT VAPID public key (it may be env-set or generated at boot).
+// Never hardcode it: a stale key makes every push subscription fail silently.
+async function getVapidPublicKey() {
+    if (import.meta.env.VITE_VAPID_PUBLIC_KEY) return import.meta.env.VITE_VAPID_PUBLIC_KEY;
+    const res = await fetch(`${API_BASE}/api/vapid-public-key`);
+    const data = await res.json();
+    return data.publicKey;
+}
 
 export default function WaitingRoom({
     gameId,
@@ -33,14 +41,15 @@ export default function WaitingRoom({
                     return;
                 }
 
-                // 2. Subscribe to Push Manager
+                // 2. Subscribe to Push Manager (using the server's current public key)
+                const vapidKey = await getVapidPublicKey();
                 const subscription = await registration.pushManager.subscribe({
                     userVisibleOnly: true,
-                    applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+                    applicationServerKey: urlBase64ToUint8Array(vapidKey)
                 });
 
                 // 3. Send subscription to server
-                const res = await fetch(`${import.meta.env.PROD ? '' : 'http://localhost:3001'}/api/subscribe`, {
+                const res = await fetch(`${API_BASE}/api/subscribe`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ subscription, playerId })

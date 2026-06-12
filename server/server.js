@@ -18,12 +18,19 @@ import {
     getGameStateForPlayer
 } from './game/engine.js';
 import {
+    initializeDictionaries,
+    reloadDictionary,
+    getDictionaryWords,
+    addWordsToDictionary
+} from './game/validator.js';
+import {
     createUser,
     getUser,
     getUserByRecoveryCode,
     getUserByEmail,
     addGameToUser,
     removeGameFromUser,
+    removeGameFromAllUsers,
     getUserGames,
     updateUser as updateUserProfile,
     generateMagicToken,
@@ -36,10 +43,19 @@ import {
 } from './users.js';
 
 // Web Push Configuration
-const publicVapidKey = process.env.VITE_VAPID_PUBLIC_KEY || 'BO6d-kaZ3rbflknBQKNGcUAz84HHZRKunuPhE0-gendQd_zovyZ3lO10LUxSq2jjQph5rJCVy_vmifSCCeki58s';
-const privateVapidKey = process.env.VAPID_PRIVATE_KEY || 'NYYs4gXRp5o3u30FCcfuIPXehFALezHsbLpN35jgHUE';
-// NOTE: Ideally these should be loaded strictly from ENV in production.
-// Using defaults here for immediate testing without restart if .env isn't reloaded.
+// Keys MUST come from the environment. We never hardcode a private key in source.
+// If they are missing we generate an ephemeral pair so push works in dev, but it
+// resets on every restart (existing subscriptions become invalid) — set real keys
+// via VAPID_PRIVATE_KEY / VITE_VAPID_PUBLIC_KEY in production.
+let publicVapidKey = process.env.VITE_VAPID_PUBLIC_KEY;
+let privateVapidKey = process.env.VAPID_PRIVATE_KEY;
+
+if (!publicVapidKey || !privateVapidKey) {
+    const generated = webpush.generateVAPIDKeys();
+    publicVapidKey = generated.publicKey;
+    privateVapidKey = generated.privateKey;
+    console.warn('⚠️  VAPID keys not set in env — generated an ephemeral pair (push notifications reset on restart).');
+}
 
 webpush.setVapidDetails(
     process.env.VAPID_SUBJECT || 'mailto:admin@wordandwords.com',
@@ -66,7 +82,7 @@ const io = new Server(server, {
 });
 
 app.use(cors());
-app.use(express.json({ limit: '50mb' }));
+app.use(express.json({ limit: '5mb' }));
 
 // Serve static files in production
 if (process.env.NODE_ENV === 'production') {
@@ -119,6 +135,11 @@ app.get('/api/config', (req, res) => {
 
 app.get('/api/board-layout', (req, res) => {
     res.json(BOARD_LAYOUT);
+});
+
+// Expose the VAPID public key so the client can subscribe without hardcoding it
+app.get('/api/vapid-public-key', (req, res) => {
+    res.json({ publicKey: publicVapidKey });
 });
 
 app.get('/api/games', (req, res) => {
@@ -359,8 +380,7 @@ app.get('/api/auth/verify', (req, res) => {
 
 // ADMIN USER MANAGEMENT
 // Get all users
-app.get('/api/admin/users', (req, res) => {
-    // Ideally add admin auth check here
+app.get('/api/admin/users', adminAuth, (req, res) => {
     const users = getAllUsers();
 
     // Map to include relevant info
@@ -378,7 +398,7 @@ app.get('/api/admin/users', (req, res) => {
 });
 
 // Update user details (Admin)
-app.put('/api/admin/users/:userId', (req, res) => {
+app.put('/api/admin/users/:userId', adminAuth, (req, res) => {
     const { name, email } = req.body;
     const user = getUser(req.params.userId);
 
@@ -399,7 +419,7 @@ app.put('/api/admin/users/:userId', (req, res) => {
 });
 
 // Delete user (Admin)
-app.delete('/api/admin/users/:id', (req, res) => {
+app.delete('/api/admin/users/:id', adminAuth, (req, res) => {
     const { id } = req.params;
     if (deleteUser(id)) {
         res.json({ success: true });
@@ -1201,6 +1221,7 @@ io.on('connection', (socket) => {
                 return safeCallback(callback, {
                     success: true,
                     gameId,
+                    playerId: currentPlayerId || existingPlayer?.id,
                     game: getGameStateForPlayer(game, currentPlayerId || (existingPlayer?.id))
                 });
             }
@@ -1287,6 +1308,7 @@ io.on('connection', (socket) => {
 
             safeCallback(callback, {
                 success: true,
+                playerId: currentPlayerId,
                 game: getGameStateForPlayer(game, currentPlayerId)
             });
 
@@ -1311,6 +1333,10 @@ io.on('connection', (socket) => {
 
             startGame(game);
             saveGame(game);
+
+            // Kick off the server-side turn timer for the first player
+            game._lastNotifiedIndex = game.currentPlayerIndex;
+            scheduleTurnTimer(game);
 
             // Send personalized game state to each player
             game.players.forEach(player => {
@@ -1513,41 +1539,93 @@ io.on('connection', (socket) => {
         }
         console.log('Client disconnected:', socket.id);
     });
+});
 
-    // Helper: Broadcast game update to all players
-    function broadcastGameUpdate(game) {
-        if (!game) return;
+// =====================
+// Turn timers (server-authoritative) + broadcast
+// =====================
 
-        // Notify players of turn change (Web Push)
-        if (game.status === 'playing') {
-            const activePlayer = game.players[game.currentPlayerIndex];
+// gameId -> setTimeout handle for the current turn's auto-pass
+const turnTimers = new Map();
+
+function clearTurnTimer(gameId) {
+    const tmr = turnTimers.get(gameId);
+    if (tmr) {
+        clearTimeout(tmr);
+        turnTimers.delete(gameId);
+    }
+}
+
+// Schedule the auto-pass for the current player. The timer lives on the SERVER so
+// a turn still expires even if the active player closes their browser.
+function scheduleTurnTimer(game) {
+    clearTurnTimer(game.id);
+    if (!game || game.status !== 'playing' || !game.timeLimit) return;
+
+    const elapsed = game.turnStartTime ? (Date.now() - game.turnStartTime) : 0;
+    const remainingMs = Math.max(0, game.timeLimit * 1000 - elapsed);
+    const expectedIndex = game.currentPlayerIndex;
+
+    const tmr = setTimeout(() => {
+        const g = games.get(game.id);
+        if (!g || g.status !== 'playing') return;
+        // Only auto-pass if the turn hasn't already advanced in the meantime
+        if (g.currentPlayerIndex !== expectedIndex) return;
+        try {
+            const current = g.players[g.currentPlayerIndex];
+            passTurn(g, current.id);
+            saveGame(g);
+            broadcastGameUpdate(g);
+            console.log(`Turn auto-passed in ${g.id} (time limit reached)`);
+        } catch (e) {
+            console.error('Auto-pass error:', e);
+        }
+    }, remainingMs);
+
+    turnTimers.set(game.id, tmr);
+}
+
+// Broadcast game state to every player, fire turn-change push, manage the turn timer
+function broadcastGameUpdate(game) {
+    if (!game) return;
+
+    if (game.status === 'playing') {
+        // Push only when the active player actually CHANGED (not on chat/reconnect)
+        const activeIndex = game.currentPlayerIndex;
+        if (game._lastNotifiedIndex !== activeIndex) {
+            const activePlayer = game.players[activeIndex];
             if (activePlayer) {
                 sendPushToPlayer(activePlayer.id, {
                     title: '¡Es tu turno!',
-                    body: `Te toca jugar en ${game.title || 'tu partida'}.`,
+                    body: `Te toca jugar${game.title ? ` en ${game.title}` : ''}.`,
                     url: '/'
                 });
             }
+            game._lastNotifiedIndex = activeIndex;
         }
+        scheduleTurnTimer(game);
+    } else {
+        clearTurnTimer(game.id);
+    }
 
-        game.players.forEach(player => {
-            const playerSocket = playerSockets.get(player.id);
-            if (playerSocket) {
-                playerSocket.emit('gameUpdate', {
-                    game: getGameStateForPlayer(game, player.id)
-                });
-            }
-        });
-
-        // Check for game end
-        if (game.status === 'finished') {
-            io.to(game.id).emit('gameEnded', {
-                winner: game.winner,
-                players: game.players.map(p => ({ id: p.id, name: p.name, score: p.score }))
+    game.players.forEach(player => {
+        const playerSocket = playerSockets.get(player.id);
+        if (playerSocket) {
+            playerSocket.emit('gameUpdate', {
+                game: getGameStateForPlayer(game, player.id)
             });
         }
+    });
+
+    // Check for game end
+    if (game.status === 'finished') {
+        io.to(game.id).emit('gameEnded', {
+            winner: game.winner,
+            isTie: game.isTie,
+            players: game.players.map(p => ({ id: p.id, name: p.name, score: p.score }))
+        });
     }
-});
+}
 
 // =====================
 // PERSISTENCE LOGIC
@@ -1601,6 +1679,9 @@ function getGame(gameId) {
 function deleteGame(gameId) {
     let deleted = false;
 
+    // Stop any pending turn timer for this game
+    clearTurnTimer(gameId);
+
     // Remove from memory/active
     if (games.has(gameId)) {
         games.delete(gameId);
@@ -1608,18 +1689,8 @@ function deleteGame(gameId) {
         deleted = true;
     }
 
-    // Clean up users listing this game
-    const users = loadData(USERS_FILE);
-    let usersUpdated = false;
-    users.forEach(u => {
-        if (u.activeGames && u.activeGames.includes(gameId)) {
-            u.activeGames = u.activeGames.filter(g => g !== gameId);
-            usersUpdated = true;
-        }
-    });
-    if (usersUpdated) {
-        saveData(USERS_FILE, users);
-    }
+    // Clean up users listing this game (handled by the users module)
+    removeGameFromAllUsers(gameId);
 
     // Remove from archive
     const archived = loadData(ARCHIVE_FILE);
@@ -1686,48 +1757,6 @@ function cleanupOldGames() {
         saveData(GAMES_FILE, Array.from(games.values()));
         console.log('Cleaned up old games');
     }
-}
-
-// =====================
-// DICTIONARY MANAGEMENT
-// =====================
-
-import { createInterface } from 'readline';
-
-const dictionaryCache = new Map(); // <lang, Set<word>>
-
-function initializeDictionaries() {
-    const dictDir = path.join(__dirname, 'dictionaries');
-    if (!fs.existsSync(dictDir)) {
-        fs.mkdirSync(dictDir);
-        console.log('Created dictionaries directory');
-    }
-}
-
-function getDictionaryWords(lang) {
-    if (dictionaryCache.has(lang)) {
-        return Array.from(dictionaryCache.get(lang));
-    }
-
-    // Attempt to load from file
-    const dictPath = path.join(__dirname, 'dictionaries', `${lang}.txt`);
-    if (fs.existsSync(dictPath)) {
-        try {
-            const content = fs.readFileSync(dictPath, 'utf-8');
-            const words = content.split('\n').map(w => w.trim().toUpperCase()).filter(w => w);
-            dictionaryCache.set(lang, new Set(words));
-            return words;
-        } catch (err) {
-            console.error(`Error loading dictionary ${lang}:`, err);
-        }
-    }
-
-    return [];
-}
-
-function reloadDictionary(lang) {
-    dictionaryCache.delete(lang);
-    getDictionaryWords(lang); // Re-load
 }
 
 // =====================
